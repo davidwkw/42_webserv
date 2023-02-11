@@ -7,7 +7,8 @@
 #include <vector>
 #include <set>
 #include "Server.hpp"
-// #include <webserv.hpp>
+#include <webserv.hpp>
+#include <sstream>
 
 class Config
 {
@@ -23,9 +24,13 @@ class Config
 
 		static const std::set<std::string>	directives; 
 		std::string							_path;
+		std::map<int, Server>				servers;
 
 		Config(void);
-		void _init(const std::string &filename);
+		bool _open_file(const std::string &filename, std::ifstream& file);
+		void _cache_stream(std::ifstream& file, std::stringstream &cached_stream);
+		void _remove_comments(std::stringstream &cached_stream);
+		void _parse_server_conf(std::stringstream &cached_stream);
 
 	public:
 		~Config(void);
@@ -35,17 +40,7 @@ class Config
 
 		const std::string &path(void) const;
 
-		class ConfigurationFailed : public std::exception {
-			public:
-				const char* what() const throw();
-		};
-		
-		class ConfigurationFailed : public std::exception {
-			public:
-				const char* what() const throw();
-		};
-		
-		class ConfigurationFailed : public std::exception {
+		class UnableToOpenPath : public std::exception {
 			public:
 				const char* what() const throw();
 		};
