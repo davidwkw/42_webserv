@@ -27,8 +27,8 @@ class Config
 		static std::set<std::string> _fill_directives();
 		bool _open_file(const std::string &filename, std::ifstream& file);
 		void _cache_stream(std::ifstream& file, std::stringstream &cached_stream);
-		void _parse_readable_lines(std::stringstream &cached_stream);
-		void _parse_server_conf(const std::stringstream &cached_stream);
+		std::string _parse_readable_lines(std::stringstream &cached_stream);
+		void _parse_server_conf(const std::string &cached_string);
 
 	public:
 		~Config(void);

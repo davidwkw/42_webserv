@@ -36,12 +36,13 @@ Config &Config::operator=(const Config &ref){
 Config::Config(const std::string &filename) : _path(filename){
 	std::ifstream		conf_stream;
 	std::stringstream	ss;
+	std::string			raw;
 	
 	if (this->_open_file(filename, conf_stream) == false) 
 		throw UnableToOpenPath(); // consider throwing a more formatted error message? i.e [Config]: message
 	this->_cache_stream(conf_stream, ss);
 	conf_stream.close(); // not necessary, but can close earlier to release resources before moving out of constructor scope
-	this->_parse_readable_lines(ss);
+	raw = this->_parse_readable_lines(ss);
 	this->_parse_server_conf(ss);
 }
 
@@ -57,7 +58,7 @@ void _cache_stream(std::ifstream& file, std::stringstream &cache_stream){
 	cache_stream << file.rdbuf();
 }
 
-void _parse_readable_lines(std::stringstream &cached_stream){
+std::string _parse_readable_lines(std::stringstream &cached_stream){
 	std::string	result;
 	std::string line;
 	std::size_t hash_pos;
@@ -71,11 +72,10 @@ void _parse_readable_lines(std::stringstream &cached_stream){
 			continue;
         result += line + '\n';
     }
-	cached_stream.str(result); // does the eof bit reset? might need to test
+	return result;
 }
 
-void Config::_parse_server_conf(const std::stringstream &cached_stream){
-	std::string conf_str = cached_stream.str();
+void Config::_parse_server_conf(const std::string &conf_str){
 	std::size_t start_index = 0; // need to name it better...it's index of the start of the string before delimiter
 	std::size_t delimiter_index = start_index;
 	std::string captured_directive;
