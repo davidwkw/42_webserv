@@ -13,9 +13,6 @@
 class Config
 {
 	private:
-		// probably replace std::string with ServerConfig class
-		// std::vector<Server>	server_configs;
-
 		// Server stuff
 		// listen
 		// server_name
@@ -27,10 +24,11 @@ class Config
 		std::map<int, Server>				servers;
 
 		Config(void);
+		static std::set<std::string> _fill_directives();
 		bool _open_file(const std::string &filename, std::ifstream& file);
 		void _cache_stream(std::ifstream& file, std::stringstream &cached_stream);
-		void _remove_comments(std::stringstream &cached_stream);
-		void _parse_server_conf(std::stringstream &cached_stream);
+		void _parse_readable_lines(std::stringstream &cached_stream);
+		void _parse_server_conf(const std::stringstream &cached_stream);
 
 	public:
 		~Config(void);
@@ -44,6 +42,8 @@ class Config
 			public:
 				const char* what() const throw();
 		};
+
+		static std::pair<std::string, std::string> parse_simple_directive(const std::string &directive);
 };
 
 #endif
