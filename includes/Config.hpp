@@ -19,7 +19,7 @@ class Config
 		// error_page
 		// client_max_body_size
 
-		static const std::set<std::string>	directives; 
+		static const std::set<std::string>	_directives; 
 		std::string							_path;
 		std::map<int, Server>				servers;
 

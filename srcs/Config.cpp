@@ -1,6 +1,6 @@
 #include "Config.hpp"
 
-const std::set<std::string> Config::directives = Config::_fill_directives();
+const std::set<std::string> Config::_directives = Config::_fill_directives();
 
 std::set<std::string> Config::_fill_directives(){
 	const std::string directives[] =	{
@@ -12,7 +12,7 @@ std::set<std::string> Config::_fill_directives(){
 										};
 	std::set<std::string> fill_set;
 
-	for (std::size_t i; i < sizeof(directives) / sizeof(std::string); i++)
+	for (std::size_t i = 0; i < sizeof(directives) / sizeof(std::string); i++)
 		fill_set.insert(directives[i]);
 	return fill_set;
 }
@@ -90,7 +90,7 @@ void Config::_parse_server_conf(const std::stringstream &cached_stream){
 		}
 		else if (conf_str[delimiter_index] == '{')
 		{
-			Config::directives.find();
+			Config::_directives.find();
 			// do something else
 		}
 		else
