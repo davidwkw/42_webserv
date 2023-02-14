@@ -60,7 +60,10 @@ void Logger::warn(const std::string &msg) const {
 }
 
 void Logger::error(const std::string &msg) const {
-	std::cerr << "[Error] " << msg << std::endl;
+	if (_log_stream == &std::cout)
+		std::cerr << "[Error] " << msg << std::endl;
+	else
+		(*_log_stream) <<  "[Error] " << msg << std::endl;
 }
 
 void Logger::info(const std::string &msg) const {
