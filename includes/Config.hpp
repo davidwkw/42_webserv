@@ -19,12 +19,13 @@ class Config
 		// error_page
 		// client_max_body_size
 
-		static const std::set<std::string>	_directives; 
+		static const std::set<std::string>	_valid_directives; 
 		std::string							_path;
-		std::map<int, Server>				servers;
+		std::map<std::string, Server>		_servers;
+		std::map<std::string, std::string>	_directives;
 
+		static std::set<std::string> _fill_valid_directives();
 		Config(void);
-		static std::set<std::string> _fill_directives();
 		bool _open_file(const std::string &filename, std::ifstream& file);
 		void _cache_stream(std::ifstream& file, std::stringstream &cached_stream);
 		std::string _parse_readable_lines(std::stringstream &cached_stream);

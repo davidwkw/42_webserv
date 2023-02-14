@@ -1,8 +1,8 @@
 #include "Config.hpp"
 
-const std::set<std::string> Config::_directives = Config::_fill_directives();
+const std::set<std::string> Config::_valid_directives = Config::_fill_valid_directives();
 
-std::set<std::string> Config::_fill_directives(){
+std::set<std::string> Config::_fill_valid_directives(){
 	const std::string directives[] =	{
 										"server",
 										"user",
@@ -43,7 +43,7 @@ Config::Config(const std::string &filename) : _path(filename){
 	this->_cache_stream(conf_stream, ss);
 	conf_stream.close(); // not necessary, but can close earlier to release resources before moving out of constructor scope
 	raw = this->_parse_readable_lines(ss);
-	this->_parse_server_conf(ss);
+	this->_parse_server_conf(raw);
 }
 
 bool	Config::_open_file(const std::string &filename, std::ifstream& file){
@@ -79,23 +79,35 @@ void Config::_parse_server_conf(const std::string &conf_str){
 	std::size_t start_index = 0; // need to name it better...it's index of the start of the string before delimiter
 	std::size_t delimiter_index = start_index;
 	std::string captured_directive;
+	std::pair<std::string, std::string> directive_pair;
 
   	while ((delimiter_index = conf_str.find_first_of(";{}", delimiter_index)) != std::string::npos)
 	{
 		captured_directive = conf_str.substr(start_index, delimiter_index - start_index);
 		if (conf_str[delimiter_index] == ';')
 		{
-			// do something
-			Config::parse_simple_directive(captured_directive);
+			directive_pair = Config::parse_simple_directive(captured_directive);
 		}
 		else if (conf_str[delimiter_index] == '{')
 		{
-			Config::_directives.find();
-			// do something else
+			directive_pair.first = trim_ws_str(captured_directive);
+			directive_pair.second = str_char_limit_span(conf_str.c_str() + delimiter_index, '{', '}');
+			if (directive_pair.second.empty() == true)
+				// unclosed { found, throw error
+			delimiter_index += directive_pair.second.length() + 1;
 		}
-		else
-		{
-			// } closing brace
+		// else
+			// Found } without {
+		if (Config::_directives.find(directive_pair.first) == Config::_directives.end())
+			// throw DirectiveNotFound
+		if (directive_pair.first == "server"){
+			std::pair<std::string, Server> server;
+			server.second = Server(directive_pair.second);
+			server.first = server.second.server_name();
+			this->_servers.insert(server);
+		}
+		else{
+			this->_directives.insert(directive_pair);
 		}
 		++delimiter_index;
 		start_index = delimiter_index;
@@ -118,8 +130,7 @@ std::pair<std::string, std::string> Config::parse_simple_directive(const std::st
 	std::string word;
 
 	temp >> k;
-	while (temp >> word)
-		v += (v.empty() ? "" :  " " ) + word;
+	v = trim_ws_str(temp.str());
 	
 	return std::make_pair(k, v);
 }
