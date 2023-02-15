@@ -55,25 +55,6 @@ Logger::Logger(const std::string &path, std::ostream *default_stream) : _log_pat
 	this->_log_stream = temp;
 }
 
-void Logger::warn(const std::string &msg) const {
-	(*_log_stream) << "[Warning] " << msg << std::endl;
-}
-
-void Logger::error(const std::string &msg) const {
-	if (_log_stream == &std::cout)
-		std::cerr << "[Error] " << msg << std::endl;
-	else
-		(*_log_stream) <<  "[Error] " << msg << std::endl;
-}
-
-void Logger::info(const std::string &msg) const {
-	(*_log_stream) << "[Info] " << msg << std::endl;
-}
-
-void Logger::debug(const std::string &msg) const {
-	(*_log_stream) << "[Debug] " << msg << std::endl;
-}
-
 bool Logger::isDefaultStream() const {
 	return this->_is_default;
 }

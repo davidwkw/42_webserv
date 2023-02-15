@@ -20,12 +20,42 @@ class Logger{
 		~Logger();
 		Logger(const std::string &path, std::ostream *default_stream = &std::cout);
 
-		void warn(const std::string &msg) const;
-		void error(const std::string &msg) const;
-		void info(const std::string &msg) const;
-		void debug(const std::string &msg) const;
+		template <class T>
+		void warn(const T &msg) const;
+
+		template <class T>
+		void error(const T &msg) const;
+
+		template <class T>
+		void info(const T &msg) const;
+
+		template <class T>
+		void debug(const T &msg) const;
 
 		bool isDefaultStream() const;
 };
+
+template <class T>
+void Logger::debug(const T &msg) const{
+	(*_log_stream) << "[Debug] " << msg << std::endl;
+}
+
+template <class T>
+void Logger::warn(const T &msg) const {
+	(*_log_stream) << "[Warning] " << msg << std::endl;
+}
+
+template <class T>
+void Logger::error(const T &msg) const {
+	if (_log_stream == &std::cout)
+		std::cerr << "[Error] " << msg << std::endl;
+	else
+		(*_log_stream) <<  "[Error] " << msg << std::endl;
+}
+
+template <class T>
+void Logger::info(const T &msg) const {
+	(*_log_stream) << "[Info] " << msg << std::endl;
+}
 
 #endif
