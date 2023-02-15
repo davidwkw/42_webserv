@@ -9,6 +9,7 @@
 #include "Server.hpp"
 #include <webserv.hpp>
 #include <sstream>
+#include <stdexcept>
 
 class Config
 {
@@ -38,11 +39,6 @@ class Config
 		Config(const std::string &filename);
 
 		const std::string &path(void) const;
-
-		class UnableToOpenPath : public std::exception {
-			public:
-				const char* what() const throw();
-		};
 
 		static std::pair<std::string, std::string> parse_simple_directive(const std::string &directive);
 };
