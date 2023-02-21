@@ -17,5 +17,6 @@
 std::string ret_str_error(const std::string &msg);
 std::string trim_ws_str(const std::string &str);
 std::string str_char_limit_span(const std::string &str, char open, char close);
+std::vector<std::string> tokenise_str(const std::string & str, char c);
 
 #endif

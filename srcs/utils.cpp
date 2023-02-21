@@ -4,6 +4,8 @@
 #include <sstream>
 #include <utility>
 #include <string>
+#include <vector>
+#include <cstring>
 
 std::string ret_str_perror(const std::string &msg)
 {
@@ -23,8 +25,22 @@ std::string trim_ws_str(const std::string &str)
 
 	while (temp >> word)
 		trimmmed_str += (trimmmed_str.empty() ? "" :  " " ) + word;
-
 	return trimmmed_str;
+}
+
+std::vector<std::string> tokenise_str(const std::string & str, char c = ' ')
+{
+	std::vector<std::string> ret_vector;
+	std::size_t start_index = 0;
+	std::size_t delimiter_index = start_index;
+	
+  	while ((delimiter_index = str.find_first_of(c, delimiter_index)) != std::string::npos)
+	{
+		ret_vector.push_back(str.substr(start_index, delimiter_index - start_index));
+		++delimiter_index;
+		start_index = delimiter_index;
+	}
+	return ret_vector;
 }
 
 std::string str_char_limit_span(const std::string &str, char open, char close){
