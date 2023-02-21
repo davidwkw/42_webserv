@@ -3,6 +3,8 @@
 
 #include <map>
 #include <string>
+#include <sstream>
+#include "webserv.hpp"
 
 class BaseConfig{
 	protected:
@@ -16,6 +18,8 @@ class BaseConfig{
 
 		std::map<std::string, std::string> directives() const;
 		void add_directive(std::pair<std::string, std::string> directive);
+		
+		static std::pair<std::string, std::string> parse_simple_directive(const std::string &directive);
 };
 
 #endif

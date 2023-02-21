@@ -31,3 +31,15 @@ std::map<std::string, std::string> BaseConfig::directives() const{
 void BaseConfig::add_directive(std::pair<std::string, std::string> directive){
 	this->_directives.insert(directive);
 }
+
+std::pair<std::string, std::string> BaseConfig::parse_simple_directive(const std::string &directive){
+	std::stringstream temp(directive);
+	std::string k;
+	std::string v;
+	std::string word;
+
+	temp >> k;
+	v = trim_ws_str(temp.str());
+	
+	return std::make_pair(k, v);
+}
