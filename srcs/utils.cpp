@@ -30,16 +30,12 @@ std::string trim_ws_str(const std::string &str)
 
 std::vector<std::string> tokenise_str(const std::string & str, char c = ' ')
 {
+	std::string temp;
 	std::vector<std::string> ret_vector;
-	std::size_t start_index = 0;
-	std::size_t delimiter_index = start_index;
-	
-  	while ((delimiter_index = str.find_first_of(c, delimiter_index)) != std::string::npos)
-	{
-		ret_vector.push_back(str.substr(start_index, delimiter_index - start_index));
-		++delimiter_index;
-		start_index = delimiter_index;
-	}
+	std::stringstream ss(str);
+
+	while (std::getline(ss, temp, c))
+		ret_vector.push_back(temp);
 	return ret_vector;
 }
 
