@@ -78,56 +78,22 @@ std::string _parse_readable_lines(std::stringstream &cached_stream){
 }
 
 void Config::_parse_server_conf(const std::string &conf_str){
-	std::size_t start_index = 0;
-	std::size_t delimiter_index = start_index;
-	std::string captured_directive;
-	std::pair<std::string, std::string> directive_pair;
+	std::map<std::string, std::string> block_directives;
+	std::pair<long, ServerConfig> block_pair;
 
-  	while ((delimiter_index = conf_str.find_first_of(";{}", delimiter_index)) != std::string::npos)
-	{
-		captured_directive = conf_str.substr(start_index, delimiter_index - start_index);
-		if (conf_str[delimiter_index] == ';')
-		{
-			directive_pair = Config::parse_simple_directive(captured_directive);
-		}
-		else if (conf_str[delimiter_index] == '{')
-		{
-			directive_pair.first = trim_ws_str(captured_directive);
-			directive_pair.second = str_char_limit_span(conf_str.c_str() + delimiter_index, '{', '}');
-			if (directive_pair.second.empty() == true)
-				throw std::runtime_error("[Config] Missing } found in configuration file");
-			delimiter_index += directive_pair.second.length() + 1;
+	this->_directives = BaseConfig::parse_all_directives(conf_str, Config::all_directives_set);
+	block_directives = BaseConfig::parse_block_directives(conf_str);
+	for (directive_container_type::iterator it = block_directives.begin(); it != block_directives.end(); ++it){
+		if (it->first == "server"){
+			block_pair.first = this->_servers.size();
+			block_pair.second = ServerConfig(this->_directives, it->second);
+			this->_servers.insert(block_pair);
 		}
 		else
-			throw std::runtime_error("[Config] Found } without { in configuration file");
-		if (Config::_directives.find(directive_pair.first) == Config::_directives.end())
-			throw std::runtime_error("[Config] No directive matching " + directive_pair.first + " found");
-		if (directive_pair.first == "server"){
-			std::pair<std::string, Server> server;
-			server.second = Server(directive_pair.second);
-			server.first = server.second.server_name();
-			this->_servers.insert(server);
-		}
-		else{
-			this->_directives.insert(directive_pair);
-		}
-		++delimiter_index;
-		start_index = delimiter_index;
+			throw std::runtime_error("[Config] Invalid block directive for this context");
 	}
 }
 
 const std::string &Config::path(void) const{
 	return this->_path;
-}
-
-std::pair<std::string, std::string> Config::parse_simple_directive(const std::string &directive){
-	std::stringstream temp(directive);
-	std::string k;
-	std::string v;
-	std::string word;
-
-	temp >> k;
-	v = trim_ws_str(temp.str());
-	
-	return std::make_pair(k, v);
 }
