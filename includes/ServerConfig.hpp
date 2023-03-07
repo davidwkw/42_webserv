@@ -3,42 +3,46 @@
 
 #include <set>
 #include <map>
-#include "Location.hpp"
+#include <sstream>
+#include "LocationConfig.hpp"
+#include "BaseConfig.hpp"
 #include "Config.hpp"
 #include "webserv.hpp"
 
-class ServerConfig{
+class ServerConfig : public BaseConfig{
 	private:
-		static const std::set<std::string>	_valid_directives;
-		static std::set<std::string>		_fill_valid_directives();
 
-		std::map<std::string, std::string>	_directives;
-		std::map<std::string, Location> 	_locations;
-		
-		// Location directives
-			// limit_except
-			// root
-			// autoindex
-			// index
-			// return
-			// try_files
-			// fastcgi_pass
-			// fastcgi_params
-			// upload_store?
-			// location
+		static const char					*all_directives_array[];
+		static const char 					*normal_directives_array[];
+		static const char 					*array_directives_array[];
+		static const char 					*block_directives_array[];
 
-		void _init_directives();
+		static const std::set<std::string> 	all_directives_set;
+		static const std::set<std::string> 	normal_directives_set;
+		static const std::set<std::string> 	array_directives_set;
+		static const std::set<std::string> 	block_directives_set;
+
+		std::map<std::string, LocationConfig> 	_locations;
+
 	public:
 		ServerConfig();
 		~ServerConfig();
 		ServerConfig(const ServerConfig &ref);
 		ServerConfig &operator=(const ServerConfig &ref);
-		ServerConfig(const std::string &server_str);
+		ServerConfig(BaseConfig::directive_container_type directives, const std::string &server_str);
 
-		const std::vector<Location> &locations() const;
-		void add_location(Location location);
-		void add_server_name();
-		const std::string &server_name() const;
+		const std::map<std::string, LocationConfig> &locations() const;
+		const std::vector<std::string> server_names() const;
+		const std::vector<std::vector<std::string> > listen() const;
+		const std::vector<std::vector<std::string> > error_page() const;
+		const std::vector<std::string> index() const;
+		const std::vector<std::string> client_body_temp_path() const;
+		const std::vector<std::string> root() const;
+		const std::vector<std::string> try_files() const;
+		const std::vector<std::string> client_max_body_size() const;
+		const std::vector<std::string> autoindex() const;
+		const std::vector<std::string> index() const;
+		const std::vector<std::string> error_log() const;
 };
 
 #endif

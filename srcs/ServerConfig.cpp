@@ -1,25 +1,54 @@
 #include "ServerConfig.hpp"
 
-const std::set<std::string> ServerConfig::_valid_directives = ServerConfig::_fill_valid_directives();
+// const std::set<std::string> ServerConfig::_valid_directives = ServerConfig::_fill_valid_directives();
 
-std::set<std::string> ServerConfig::_fill_valid_directives(){
-	const std::string directives[] =	{
-										"root",
-										"autoindex",
-										"index",
-										"return",
-										"try_files",
-										"upload_store"
-										};
-	std::set<std::string> fill_set;
-	for (std::size_t i = 0; i < sizeof(directives) / sizeof(std::string); i++)
-		fill_set.insert(directives[i]);
-	return fill_set;
-}
+const char *ServerConfig::all_directives_array[] = {
+												"error_log",
+												"server_name",
+												"listen"
+												"index",
+												"error_page",
+												"listen",
+												"return",
+												"cgi",
+												"autoindex",
+												"root",
+												"client_body_temp_path",
+												"try_files",
+												"client_max_body_size"
+												};
 
-ServerConfig::ServerConfig(void) : _directives(), _locations() {
+const char *ServerConfig::normal_directives_array[] =	{
+														"index",
+														"error_page",
+														"return",
+														"cgi",
+														"autoindex",
+														"root",
+														"client_body_temp_path",
+														"try_files",
+														"client_max_body_size"
+														};
 
-}
+const char *ServerConfig::array_directives_array[] = {
+													"error_log",
+													"server_name",
+													"listen"
+													};
+									
+const char *ServerConfig::block_directives_array[] = 	{
+														"location"
+														};
+
+const std::set<std::string> ServerConfig::all_directives_set = BaseConfig::_init_directive_set(ServerConfig::all_directives_array);
+
+const std::set<std::string> ServerConfig::normal_directives_set = BaseConfig::_init_directive_set(ServerConfig::normal_directives_array);
+
+const std::set<std::string> ServerConfig::array_directives_set = BaseConfig::_init_directive_set(ServerConfig::array_directives_array);
+
+const std::set<std::string> ServerConfig::block_directives_set = BaseConfig::_init_directive_set(ServerConfig::block_directives_array);
+
+ServerConfig::ServerConfig(void) : BaseConfig(), _locations() {}
 
 ServerConfig::~ServerConfig(void){}
 
@@ -36,53 +65,63 @@ ServerConfig &ServerConfig::operator=(const ServerConfig &ref){
 	return *this;
 }
 
-ServerConfig::ServerConfig(const std::string &server_str){
-	std::size_t start_index = 0;
-	std::size_t delimiter_index = start_index;
-	std::string captured_directive;
-	std::pair<std::string, std::string> directive_pair;
+ServerConfig::ServerConfig(BaseConfig::directive_container_type directives, const std::string &server_str) : BaseConfig(directives, ServerConfig::all_directives_set) {
+	directive_container_type parsed_directives_container;
 
-  	while ((delimiter_index = server_str.find_first_of(";{}", delimiter_index)) != std::string::npos)
+	parsed_directives_container = BaseConfig::parse_all_directives(server_str);
+	for (directive_container_type::iterator it = parsed_directives_container.begin(); it != parsed_directives_container.end(); ++it)
 	{
-		captured_directive = server_str.substr(start_index, delimiter_index - start_index);
-		if (server_str[delimiter_index] == ';')
-		{
-			directive_pair = Config::parse_simple_directive(captured_directive);
-		}
-		else if (server_str[delimiter_index] == '{')
-		{
-			directive_pair.first = trim_ws_str(captured_directive);
-			directive_pair.second = str_char_limit_span(server_str.c_str() + delimiter_index, '{', '}');
-			if (directive_pair.second.empty() == true)
-				throw std::runtime_error("[Config] Missing } found in configuration file");
-			delimiter_index += directive_pair.second.length() + 1;
-		}
-		else
-			throw std::runtime_error("[Config] Found } without { in configuration file");
-		if (ServerConfig::_valid_directives.find(directive_pair.first) == ServerConfig::_valid_directives.end())
-			throw std::runtime_error("[Config] No directive matching " + directive_pair.first + " found");
-		if (directive_pair.first == "location"){
-			std::pair<std::string, Location> location;
-			location.second = Location(directive_pair.second);
-			location.first = location.second.path();
-			this->_locations.insert(location);
-		}
-		else{
-			this->_directives.insert(directive_pair);
-		}
-		++delimiter_index;
-		start_index = delimiter_index;
+		if (ServerConfig::all_directives_set.find(it->first) == ServerConfig::all_directives_set.end())
+			throw std::runtime_error("[ServerConfig] " + it->first + " is invalid for this context");
+		this->_directives[it->first] = it->second;
 	}
 }
 
-void ServerConfig::_init_directives() {
+const std::vector<std::string> ServerConfig::server_names() const{
+	std::vector<std::vector<std::string> > temp;
+	std::vector<std::string> ret_vector;
+	
+	temp = this->find_array_directive("server_name");
+	for (std::vector<std::vector<std::string> >::iterator it = temp.begin(); it != temp.end(); ++it){
+		for (std::vector<std::string>::iterator it2 = it->begin(); it2 != it->end(); ++it2){
+			ret_vector.push_back(*it2);
+		}
+	}
+	return ret_vector;
+}
 
-	this->_directives.insert(std::make_pair("server_name", "_"));
-	this->_directives.insert(std::make_pair("root", "html"));
-	this->_directives.insert(std::make_pair("autoindex", "off"));
-	// this->_directives.insert(std::make_pair("limit_except", "")); location directive
-	this->_directives.insert(std::make_pair("listen", "*:80 | *:8000"));
-	this->_directives.insert(std::make_pair("error_page", ""));
-	this->_directives.insert(std::make_pair("index", "index.html"));
-	this->_directives.insert(std::make_pair("upload_store", ""));
+const std::vector<std::vector<std::string> > ServerConfig::error_page() const{
+	return this->find_array_directive("error_page");
+}
+
+const std::vector<std::string> ServerConfig::client_body_temp_path() const{
+	return this->find_normal_directive("client_body_temp_path");
+}
+
+const std::vector<std::string> ServerConfig::root() const{
+	return this->find_normal_directive("root");
+}
+
+const std::vector<std::string> ServerConfig::try_files() const{
+	return this->find_normal_directive("try_files");
+}
+
+const std::vector<std::vector<std::string> > ServerConfig::listen() const{
+	return this->find_array_directive("listen");
+}
+
+const std::vector<std::string> ServerConfig::client_max_body_size() const{
+	return this->find_normal_directive("client_max_body_size");
+}
+
+const std::vector<std::string> ServerConfig::autoindex() const{
+	return this->find_normal_directive("autoindex");
+}
+
+const std::vector<std::string> ServerConfig::index() const{
+	return this->find_normal_directive("index");
+}
+
+const std::vector<std::string> ServerConfig::error_log() const{
+	return this->find_normal_directive("error_log");
 }
