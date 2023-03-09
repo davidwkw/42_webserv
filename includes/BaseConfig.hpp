@@ -24,9 +24,6 @@ class BaseConfig{
 		static const std::set<std::string> 				array_directives_set;
 		static const std::set<std::string>				block_directives_set;
 		static const directive_container_type			directive_defaults;
-
-		template <std::size_t N>
-		static std::set<std::string> _init_directive_set(const char *(&arr)[N]);
 		
 		void _fill_directive_defaults(directive_container_type &directive_ref, const allowed_directives_container_type &inclusion_set, const directive_container_type &defaults_map = BaseConfig::directive_defaults);
 
@@ -77,16 +74,6 @@ BaseConfig::BaseConfig(const directive_container_type &directives, Iterator firs
 			this->_directives.erase(*directives_start);
 		first = first_copy;
 	}
-}
-
-template <std::size_t N>
-std::set<std::string> BaseConfig::_init_directive_set(const char *(&arr)[N]){
-
-	std::set<std::string> fill_set;
-
-	for (std::size_t i = 0; i < N; i++)
-		fill_set.insert(arr[i]);
-	return fill_set;
 }
 
 #endif

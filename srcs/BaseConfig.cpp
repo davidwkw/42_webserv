@@ -36,7 +36,9 @@ const char *BaseConfig::normal_directives_array[] = {
 const char *BaseConfig::array_directives_array[] =	{
 													"error_log",
 													"server_name",
-													"listen"
+													"listen",
+													"allow",
+													"deny"
 													};
 
 const char *BaseConfig::block_directives_array[] =	{
@@ -45,13 +47,13 @@ const char *BaseConfig::block_directives_array[] =	{
 													"limit_except"
 													};
 
-const std::set<std::string> BaseConfig::all_directives_set = BaseConfig::_init_directive_set(BaseConfig::all_directives_array);
+const std::set<std::string> BaseConfig::all_directives_set = init_string_set(BaseConfig::all_directives_array);
 
-const std::set<std::string> BaseConfig::all_directives_set = BaseConfig::_init_directive_set(BaseConfig::normal_directives_array);
+const std::set<std::string> BaseConfig::all_directives_set = init_string_set(BaseConfig::normal_directives_array);
 
-const std::set<std::string> BaseConfig::array_directives_set = BaseConfig::_init_directive_set(BaseConfig::array_directives_array);
+const std::set<std::string> BaseConfig::array_directives_set = init_string_set(BaseConfig::array_directives_array);
 
-const std::set<std::string> BaseConfig::block_directives_set = BaseConfig::_init_directive_set(BaseConfig::block_directives_array);
+const std::set<std::string> BaseConfig::block_directives_set = init_string_set(BaseConfig::block_directives_array);
 
 const std::map<std::string, std::string> BaseConfig::directive_defaults = BaseConfig::_init_directive_defaults();
 
@@ -127,7 +129,7 @@ BaseConfig::directive_type BaseConfig::parse_directive(const std::string &direct
 	std::string 					k;
 	std::string						v;
 
-	temp.str(trim_ws_str(directive));
+	temp.str(trim_str(directive, " \n\t"));
 	temp >> k;
 	while (temp >> word){
 		v += (v.empty() ? "" :  " " ) + word;
@@ -147,23 +149,23 @@ BaseConfig::directive_container_type BaseConfig::parse_all_directives(const std:
 	{
 		captured_directive = str.substr(start_index, delimiter_index - start_index);
 		if (str[delimiter_index] == ';'){
-			directive_pair = BaseConfig::parse_directive(captured_directive);
+			directive_pair = BaseConfig::parse_directive(trim_str(captured_directive, " \n\t"));
 		}
 		else if (str[delimiter_index] == '{')
 		{
 			captured_directive = str_char_limit_span(str.c_str() + delimiter_index, '{', '}');
 			if (captured_directive.empty() == true)
-				throw std::runtime_error("[Config] Missing } found in configuration file");
+				throw std::runtime_error("[BaseConfig] Missing } found in configuration file");
 			delimiter_index += captured_directive.length() + 2;
 			continue;
 		}
 		else
-			throw std::runtime_error("[Config] Found } without { in configuration file");
+			throw std::runtime_error("[BaseConfig] Found } without { in configuration file");
 		if (inclusion_set.find(directive_pair.first) == inclusion_set.end())
-			throw std::runtime_error("[Config] Invalid directive " + directive_pair.first);
+			throw std::runtime_error("[BaseConfig] Invalid directive " + directive_pair.first);
 		if (BaseConfig::normal_directives_set.find(directive_pair.first) != BaseConfig::normal_directives_set.end()
 			&& this->_directives.find(directive_pair.first) != this->_directives.end())
-			throw std::runtime_error("[Config] " + directive_pair.first + " directive already set");
+			throw std::runtime_error("[BaseConfig] " + directive_pair.first + " directive already set");
 		else if (BaseConfig::array_directives_set.find(directive_pair.first) != BaseConfig::array_directives_set.end()
 			&& this->_directives.find(directive_pair.first) != this->_directives.end())
 			this->_directives[directive_pair.first] += ';' + directive_pair.second;
@@ -196,7 +198,7 @@ std::map<std::string, std::string> BaseConfig::parse_block_directives(const std:
 		if (start_index == std::string::npos)
 			start_index = 0;
 		directive_pair.first = str.substr(start_index, delimiter_index - start_index);
-		directive_pair.first = trim_ws_str(directive_pair.first);
+		directive_pair.first = trim_str(directive_pair.first, " \n\t");
 		directive_pair.second = str_char_limit_span(str.c_str() + delimiter_index, '{', '}');
 		return_map.insert(directive_pair);
 		delimiter_index += directive_pair.second.size() + 2;
