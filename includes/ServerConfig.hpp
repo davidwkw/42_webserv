@@ -11,6 +11,7 @@
 
 class ServerConfig : public BaseConfig{
 	private:
+		std::map<std::string, LocationConfig> 	_locations;
 
 		static const char					*all_directives_array[];
 		static const char 					*normal_directives_array[];
@@ -22,7 +23,7 @@ class ServerConfig : public BaseConfig{
 		static const std::set<std::string> 	array_directives_set;
 		static const std::set<std::string> 	block_directives_set;
 
-		std::map<std::string, LocationConfig> 	_locations;
+		void 		_parse_location_conf(const std::string &cached_string);
 
 	public:
 		ServerConfig();

@@ -1,22 +1,20 @@
 #include "ServerConfig.hpp"
 
-// const std::set<std::string> ServerConfig::_valid_directives = ServerConfig::_fill_valid_directives();
-
 const char *ServerConfig::all_directives_array[] = {
-												"error_log",
-												"server_name",
-												"listen"
-												"index",
-												"error_page",
-												"listen",
-												"return",
-												"cgi",
-												"autoindex",
-												"root",
-												"client_body_temp_path",
-												"try_files",
-												"client_max_body_size"
-												};
+													"error_log",
+													"server_name",
+													"listen"
+													"index",
+													"error_page",
+													"listen",
+													"return",
+													"cgi",
+													"autoindex",
+													"root",
+													"client_body_temp_path",
+													"try_files",
+													"client_max_body_size"
+													};
 
 const char *ServerConfig::normal_directives_array[] =	{
 														"index",
@@ -36,19 +34,19 @@ const char *ServerConfig::array_directives_array[] = {
 													"listen"
 													};
 									
-const char *ServerConfig::block_directives_array[] = 	{
+const char *ServerConfig::block_directives_array[] =	{
 														"location"
 														};
 
-const std::set<std::string> ServerConfig::all_directives_set = BaseConfig::_init_directive_set(ServerConfig::all_directives_array);
+const std::set<std::string> ServerConfig::all_directives_set = init_string_set(ServerConfig::all_directives_array);
 
-const std::set<std::string> ServerConfig::normal_directives_set = BaseConfig::_init_directive_set(ServerConfig::normal_directives_array);
+const std::set<std::string> ServerConfig::normal_directives_set = init_string_set(ServerConfig::normal_directives_array);
 
-const std::set<std::string> ServerConfig::array_directives_set = BaseConfig::_init_directive_set(ServerConfig::array_directives_array);
+const std::set<std::string> ServerConfig::array_directives_set = init_string_set(ServerConfig::array_directives_array);
 
-const std::set<std::string> ServerConfig::block_directives_set = BaseConfig::_init_directive_set(ServerConfig::block_directives_array);
+const std::set<std::string> ServerConfig::block_directives_set = init_string_set(ServerConfig::block_directives_array);
 
-ServerConfig::ServerConfig(void) : BaseConfig(), _locations() {}
+ServerConfig::ServerConfig(void) : BaseConfig(), _locations(){}
 
 ServerConfig::~ServerConfig(void){}
 
@@ -65,15 +63,29 @@ ServerConfig &ServerConfig::operator=(const ServerConfig &ref){
 	return *this;
 }
 
-ServerConfig::ServerConfig(BaseConfig::directive_container_type directives, const std::string &server_str) : BaseConfig(directives, ServerConfig::all_directives_set) {
-	directive_container_type parsed_directives_container;
+ServerConfig::ServerConfig(BaseConfig::directive_container_type directives, const std::string &location_str) : BaseConfig(directives, ServerConfig::all_directives_set) {
+	this->_directives = BaseConfig::parse_all_directives(location_str, ServerConfig::all_directives_set);
+	this->_parse_location_conf(location_str);
+}
 
-	parsed_directives_container = BaseConfig::parse_all_directives(server_str);
-	for (directive_container_type::iterator it = parsed_directives_container.begin(); it != parsed_directives_container.end(); ++it)
-	{
-		if (ServerConfig::all_directives_set.find(it->first) == ServerConfig::all_directives_set.end())
-			throw std::runtime_error("[ServerConfig] " + it->first + " is invalid for this context");
-		this->_directives[it->first] = it->second;
+void 	ServerConfig::_parse_location_conf(const std::string &cached_string){
+	std::map<std::string, std::string> block_directives;
+	std::vector<std::string> identifier_tokens;
+	std::pair<std::string, LocationConfig> block_pair;
+
+	block_directives = BaseConfig::parse_block_directives(cached_string);
+	for (std::map<std::string, std::string>::iterator it = block_directives.begin(); it != block_directives.end(); ++it){
+		identifier_tokens = tokenise_str(it->first);
+		if (identifier_tokens.size() != 2)
+			throw std::runtime_error("[ServerConfig] Invalid number of identifiers for this context");
+		else if (identifier_tokens[0] != "location")
+			throw std::runtime_error("[ServerConfig] Invalid block directive for this context");
+		else
+		{
+			block_pair.first = identifier_tokens[1];
+			block_pair.second = LocationConfig(this->_directives, it->second);
+			this->_locations.insert(block_pair);
+		}
 	}
 }
 
