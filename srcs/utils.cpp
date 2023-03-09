@@ -23,7 +23,9 @@ std::string trim_str(const std::string &str, char *chars)
 	std::size_t end_index;
 
 	start_index = str.find_first_not_of(chars);
+	start_index = (start_index == std::string::npos ? 0 : start_index);
 	end_index = str.find_last_not_of(chars);
+	end_index = (end_index == std::string::npos ? str.size() : end_index);
 	
 	return str.substr(start_index, end_index - start_index + 1);
 }
