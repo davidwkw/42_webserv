@@ -43,4 +43,24 @@ struct is_same<T, T> : std::true_type {};
 template< class T > struct remove_const                { typedef T type; };
 template< class T > struct remove_const<const T>       { typedef T type; };
 
+template <std::size_t N>
+std::vector<std::string> init_string_vector(const char *(&arr)[N]){
+
+	std::vector<std::string> fill_vector;
+
+	for (std::size_t i = 0; i < N; i++)
+		fill_vector.insert(arr[i]);
+	return fill_vector;
+}
+
+template <std::size_t N>
+std::set<std::string> init_string_set(const char *(&arr)[N]){
+
+	std::set<std::string> fill_set;
+
+	for (std::size_t i = 0; i < N; i++)
+		fill_set.insert(arr[i]);
+	return fill_set;
+}
+
 #endif
