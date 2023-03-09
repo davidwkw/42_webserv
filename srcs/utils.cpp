@@ -17,15 +17,15 @@ std::string ret_str_perror(const std::string &msg)
 	return str;
 }
 
-std::string trim_ws_str(const std::string &str)
+std::string trim_str(const std::string &str, char *chars)
 {
-	std::stringstream temp(str);
-	std::string word;
-	std::string trimmmed_str;
+	std::size_t start_index;
+	std::size_t end_index;
 
-	while (temp >> word)
-		trimmmed_str += (trimmmed_str.empty() ? "" :  " " ) + word;
-	return trimmmed_str;
+	start_index = str.find_first_not_of(chars);
+	end_index = str.find_last_not_of(chars);
+	
+	return str.substr(start_index, end_index - start_index + 1);
 }
 
 std::vector<std::string> tokenise_str(const std::string & str, char c = ' ')
@@ -35,7 +35,7 @@ std::vector<std::string> tokenise_str(const std::string & str, char c = ' ')
 	std::stringstream ss(str);
 
 	while (std::getline(ss, temp, c))
-		ret_vector.push_back(temp);
+		ret_vector.push_back(trim_str(temp, " \n\t"));
 	return ret_vector;
 }
 
