@@ -81,7 +81,9 @@ std::map<std::string, std::string> BaseConfig::_init_directive_defaults(){
 	return fill_map;
 }
 
-BaseConfig::BaseConfig() : _directives(){}
+BaseConfig::BaseConfig() : _directives(){
+	_fill_directive_defaults(this->_directives, BaseConfig::all_directives_set);
+}
 
 BaseConfig::~BaseConfig(){}
 
