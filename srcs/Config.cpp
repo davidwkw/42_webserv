@@ -1,21 +1,33 @@
 #include "Config.hpp"
 
-const std::set<std::string> Config::_valid_directives = Config::_fill_valid_directives();
+const char *Config::all_directives_array[] =	{
+												"user",
+												"pid",
+												"worker_processes",
+												"error_log"
+												};
 
-std::set<std::string> Config::_fill_valid_directives(){
-	const std::string directives[] =	{
-										"server",
-										"user",
-										"pid",
-										"worker_processes",
-										"error_log"
-										};
-	std::set<std::string> fill_set;
+const char *Config::normal_directives_array[] =	{
+												"user",
+												"pid",
+												"worker_processes",
+												};
 
-	for (std::size_t i = 0; i < sizeof(directives) / sizeof(std::string); i++)
-		fill_set.insert(directives[i]);
-	return fill_set;
-}
+const char *Config::array_directives_array[] =	{
+												"error_log",
+												};
+									
+const char *Config::block_directives_array[] = 	{
+												"server"
+												};
+
+const std::set<std::string> Config::all_directives_set = init_string_set(Config::all_directives_array);
+
+const std::set<std::string> Config::normal_directives_set = init_string_set(Config::normal_directives_array);
+
+const std::set<std::string> Config::array_directives_set = init_string_set(Config::array_directives_array);
+
+const std::set<std::string> Config::block_directives_set = init_string_set(Config::block_directives_array);
 
 Config::Config(void) : _path(){}
 
@@ -45,6 +57,7 @@ Config::Config(const std::string &filename) : _path(filename){
 	this->_cache_stream(conf_stream, ss);
 	conf_stream.close();
 	raw = this->_parse_readable_lines(ss);
+	this->_directives = BaseConfig::parse_all_directives(raw, Config::all_directives_set);
 	this->_parse_server_conf(raw);
 }
 
@@ -81,7 +94,6 @@ void Config::_parse_server_conf(const std::string &conf_str){
 	std::map<std::string, std::string> block_directives;
 	std::pair<long, ServerConfig> block_pair;
 
-	this->_directives = BaseConfig::parse_all_directives(conf_str, Config::all_directives_set);
 	block_directives = BaseConfig::parse_block_directives(conf_str);
 	for (directive_container_type::iterator it = block_directives.begin(); it != block_directives.end(); ++it){
 		if (it->first == "server"){

@@ -15,11 +15,19 @@
 class Config : public BaseConfig
 {
 	private:
-		static const std::set<std::string>	_valid_directives; 
 		std::string							_path;
 		std::map<long, ServerConfig>		_servers;
 
-		static 		std::set<std::string> _fill_valid_directives();
+		static const char					*all_directives_array[];
+		static const char 					*normal_directives_array[];
+		static const char 					*array_directives_array[];
+		static const char 					*block_directives_array[];
+
+		static const std::set<std::string> 	all_directives_set;
+		static const std::set<std::string> 	normal_directives_set;
+		static const std::set<std::string> 	array_directives_set;
+		static const std::set<std::string> 	block_directives_set;
+
 		bool 		_open_file(const std::string &filename, std::ifstream& file);
 		void 		_cache_stream(std::ifstream& file, std::stringstream &cached_stream);
 		std::string _parse_readable_lines(std::stringstream &cached_stream);
