@@ -5,7 +5,7 @@
 #include <utility>
 #include <string>
 #include <vector>
-#include <cstring>
+#include <string>
 
 std::string ret_str_perror(const std::string &msg)
 {
