@@ -109,3 +109,7 @@ void Config::_parse_server_conf(const std::string &conf_str){
 const std::string &Config::path(void) const{
 	return this->_path;
 }
+
+const std::map<long, ServerConfig> Config::servers() const{
+	return this->_servers;
+}

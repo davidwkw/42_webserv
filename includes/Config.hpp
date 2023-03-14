@@ -41,6 +41,7 @@ class Config : public BaseConfig
 		Config(const std::string &filename);
 
 		const std::string &path(void) const;
+		const std::map<long, ServerConfig> servers() const;
 };
 
 #endif
