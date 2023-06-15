@@ -48,8 +48,8 @@ class Request
 		// void _validate_request_start_line_break(const std::string &headers);
 		void _validate_header_field(const std::pair<std::string, std::string> &header_pair);
 		void _handle_duplicate_headers(const std::string &key, std::string &original_value, const std::string &duplicate_value);
-		void _parse_request_headers(std::istream& iss);
 		void _parse_request_string(const std::string &request_string);
+		void _parse_request_headers(std::istream& iss);
 		void _parse_chunked_request_body(std::istream& iss);
 		void _parse_encoded_request_body(std::istream& iss);
 		

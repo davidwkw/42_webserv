@@ -167,6 +167,8 @@ void Request::_parse_request_headers(std::istream& iss)
 			throw std::runtime_error("Whitespace found before : during header parsing");
 		header_field_pair = extract_key_value_pair(line, ':');
 		this->_validate_header_field(header_field_pair);
+		if (header_field_pair.first == "Host")
+			header_field_pair.second = ft::url_decode(header_field_pair.second);
 		insert_return = this->_headers.insert(header_field_pair);
 		if (insert_return.second == false)
 			this->_handle_duplicate_headers((*insert_return.first).first, (*insert_return.first).second, header_field_pair.second);
