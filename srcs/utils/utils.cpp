@@ -105,14 +105,11 @@ bool getline_CRLF(std::istream& input, std::string& line)
     char currentChar;
 
     while (input.get(currentChar)) {
-        if (prevChar == '\r' && currentChar == '\n') {
+        if (prevChar == '\r' && currentChar == '\n')
             return true;  // CRLF found, line complete
-        } else if (currentChar == '\r') {
-            continue;  // Skip CR, continue reading
-        } else {
+		if (prevChar)
             line += prevChar;
-            prevChar = currentChar;
-        }
+		prevChar = currentChar;
     }
 
     // Check if the last character is part of a line
@@ -120,5 +117,5 @@ bool getline_CRLF(std::istream& input, std::string& line)
         line += prevChar;
     }
 
-    return !line.empty();  // Line incomplete if empty
+    return false;  // Line incomplete if empty
 }
