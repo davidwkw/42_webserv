@@ -193,7 +193,8 @@ void Request::_parse_request_headers(const std::string &header)
     std::istringstream iss(header);
     std::string line;
 
-    while (std::getline(iss, line) && line != "\r") {
+	while (ft::getline_CRLF(iss, line) && line != "\r")
+	{
 		separator_index = line.find(':');
 		whitespace_index = line.find_first_of(" \n\t\f\r\v");
 		if (whitespace_index < separator_index)
