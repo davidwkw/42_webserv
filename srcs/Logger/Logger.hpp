@@ -5,7 +5,10 @@
 #include <fstream>
 #include <iostream>
 #include <type_traits>
-#include "colors.hpp"
+#include "../../includes/colors.hpp"
+
+namespace ft
+{
 
 class Logger{
 	private:
@@ -59,5 +62,6 @@ void Logger::error(const T &msg) const {
 		(*_log_stream) << BOLD << RED << "[Error] " << RESET << msg << std::endl;
 }
 
+}
 
 #endif

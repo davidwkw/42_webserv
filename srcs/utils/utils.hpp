@@ -1,6 +1,8 @@
 #ifndef __UTILS_HPP__
 #define __UTILS_HPP__
 
+#include <sys/types.h>
+#include <sys/socket.h>
 #include <string>
 #include <cstring>
 #include <iostream>
@@ -11,10 +13,14 @@
 #include <ios>
 #include <vector>
 
+namespace ft
+{
 std::string ret_str_error(const std::string &msg);
 std::string trim_str(const std::string &str, char *chars);
 std::string str_char_limit_span(const std::string &str, char open, char close);
 std::vector<std::string> tokenise_str(const std::string & str, char c = ' ');
+std::pair<std::string, std::string> extract_key_value_pair(const std::string &str, char delimiter_key);
+unsigned long hex_str_to_ulong(const std::string &hex_str);
 
 template<bool Cond, class T = void>
 struct enable_if {};
@@ -63,4 +69,5 @@ std::set<std::string> init_string_set(const char *(&arr)[N]){
 	return fill_set;
 }
 
+}
 #endif

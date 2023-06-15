@@ -1,15 +1,21 @@
-#ifndef __LOCATION_CONFIG_HPP__
-#define __LOCATION_CONFIG_HPP__
+#ifndef __SERVER_CONFIG_HPP__
+#define __SERVER_CONFIG_HPP__
 
-#include <vector>
-#include <string>
 #include <set>
 #include <map>
-#include <utility>
+#include <sstream>
+#include "LocationConfig.hpp"
 #include "BaseConfig.hpp"
+#include "Config.hpp"
+#include "webserv.hpp"
 
-class LocationConfig : public BaseConfig{
+namespace ft
+{
+
+class ServerConfig : public BaseConfig{
 	private:
+		std::map<std::string, LocationConfig> 	_locations;
+
 		static const char					*all_directives_array[];
 		static const char 					*normal_directives_array[];
 		static const char 					*array_directives_array[];
@@ -20,15 +26,20 @@ class LocationConfig : public BaseConfig{
 		static const std::set<std::string> 	array_directives_set;
 		static const std::set<std::string> 	block_directives_set;
 
-		void 		_parse_limit_except(const std::string &cached_string);
+		void 		_parse_location_conf(const std::string &cached_string);
 
 	public:
-		LocationConfig();
-		~LocationConfig();
-		LocationConfig(const LocationConfig &ref);
-		LocationConfig &operator=(const LocationConfig &ref);
-		LocationConfig(BaseConfig::directive_container_type directives, const std::string &server_str);
+		ServerConfig();
+		~ServerConfig();
+		ServerConfig(const ServerConfig &ref);
+		ServerConfig &operator=(const ServerConfig &ref);
+		ServerConfig(BaseConfig::directive_container_type directives, const std::string &server_str);
 
+#pragma region Getters
+
+		const std::map<std::string, LocationConfig> &locations() const;
+		const std::vector<std::string> server_names() const;
+		const std::vector<std::vector<std::string> > listen() const;
 		const std::vector<std::vector<std::string> > error_page() const;
 		const std::vector<std::string> index() const;
 		const std::vector<std::string> client_body_temp_path() const;
@@ -38,6 +49,9 @@ class LocationConfig : public BaseConfig{
 		const std::vector<std::string> autoindex() const;
 		const std::vector<std::string> index() const;
 		const std::vector<std::string> error_log() const;
+
+#pragma endregion Getters
 };
+}
 
 #endif

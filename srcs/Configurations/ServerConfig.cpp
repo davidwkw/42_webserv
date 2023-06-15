@@ -1,5 +1,8 @@
 #include "ServerConfig.hpp"
 
+namespace ft
+{
+
 const char *ServerConfig::all_directives_array[] = {
 													"error_log",
 													"server_name",
@@ -136,4 +139,6 @@ const std::vector<std::string> ServerConfig::index() const{
 
 const std::vector<std::string> ServerConfig::error_log() const{
 	return this->find_normal_directive("error_log");
+}
+
 }

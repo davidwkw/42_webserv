@@ -1,4 +1,3 @@
-#include "webserv.hpp"
 #include <cstring>
 #include <cerrno>
 #include <sstream>
@@ -71,4 +70,29 @@ std::string str_char_limit_span(const std::string &str, char open, char close){
     	return std::string(); 
 	ret += str.substr(start_index, delimiter_index - start_index - 1);
 	return ret;
+}
+
+std::pair<std::string, std::string> extract_key_value_pair(const std::string &str, char delimiter_key)
+{
+	std::size_t delimiter_index;
+
+	delimiter_index = str.find(delimiter_key);
+	if (delimiter_index == std::string::npos)
+	{
+		throw std::invalid_argument("No delimiter found");
+	}
+	return std::make_pair(trim_str(str.substr(0, delimiter_index), " "), trim_str(str.substr(delimiter_index + 1), " "));
+}
+
+unsigned long hex_str_to_ulong(const std::string &hex_str)
+{
+	std::istringstream iss(hex_str);
+    unsigned long value = 0;
+
+    if (!(iss >> std::hex >>value))
+    {
+		throw std::logic_error("Unable to convert from hex to ulong");
+    }
+
+    return value;
 }

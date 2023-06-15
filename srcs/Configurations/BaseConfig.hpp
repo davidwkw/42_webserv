@@ -8,6 +8,9 @@
 #include <vector>
 #include "webserv.hpp"
 
+namespace ft
+{
+	
 class BaseConfig{
 	protected:
 	
@@ -44,7 +47,7 @@ class BaseConfig{
 		BaseConfig(const directive_container_type &directives, allowed_directives_container_type inclusion_set);
 		template <class Iterator>
 		BaseConfig(const directive_container_type &directives, Iterator first, Iterator last,
-				typename enable_if<is_same<typename remove_const<typename Iterator::value_type>::type, std::string>::value ||
+					typename enable_if<is_same<typename remove_const<typename Iterator::value_type>::type, std::string>::value ||
 								   is_same<typename remove_const<typename Iterator::value_type>::type, char*>::value>::type* = nullptr);
 		
 		directive_container_type directives() const;
@@ -74,6 +77,8 @@ BaseConfig::BaseConfig(const directive_container_type &directives, Iterator firs
 			this->_directives.erase(*directives_start);
 		first = first_copy;
 	}
+}
+
 }
 
 #endif

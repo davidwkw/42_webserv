@@ -1,43 +1,43 @@
 #include "Config.hpp"
 
-const char *Config::all_directives_array[] =	{
+const char *ft::Config::all_directives_array[] =	{
 												"user",
 												"pid",
 												"worker_processes",
 												"error_log"
 												};
 
-const char *Config::normal_directives_array[] =	{
+const char *ft::Config::normal_directives_array[] =	{
 												"user",
 												"pid",
 												"worker_processes",
 												};
 
-const char *Config::array_directives_array[] =	{
+const char *ft::Config::array_directives_array[] =	{
 												"error_log",
 												};
 									
-const char *Config::block_directives_array[] = 	{
+const char *ft::Config::block_directives_array[] = 	{
 												"server"
 												};
 
-const std::set<std::string> Config::all_directives_set = init_string_set(Config::all_directives_array);
+const std::set<std::string> ft::Config::all_directives_set = init_string_set(ft::Config::all_directives_array);
 
-const std::set<std::string> Config::normal_directives_set = init_string_set(Config::normal_directives_array);
+const std::set<std::string> ft::Config::normal_directives_set = init_string_set(ft::Config::normal_directives_array);
 
-const std::set<std::string> Config::array_directives_set = init_string_set(Config::array_directives_array);
+const std::set<std::string> ft::Config::array_directives_set = init_string_set(ft::Config::array_directives_array);
 
-const std::set<std::string> Config::block_directives_set = init_string_set(Config::block_directives_array);
+const std::set<std::string> ft::Config::block_directives_set = init_string_set(ft::Config::block_directives_array);
 
-Config::Config(void) : _path(){}
+ft::Config::Config(void) : _path(){}
 
-Config::~Config(void){}
+ft::Config::~Config(void){}
 
-Config::Config(const Config &ref){
+ft::Config::Config(const Config &ref){
 	*this = ref;
 }
 
-Config &Config::operator=(const Config &ref){
+ft::Config &ft::Config::operator=(const Config &ref){
 	if (this != &ref)
 	{
 		this->_path = ref._path;
@@ -47,7 +47,7 @@ Config &Config::operator=(const Config &ref){
 	return *this;
 }
 
-Config::Config(const std::string &filename) : _path(filename){
+ft::Config::Config(const std::string &filename) : _path(filename){
 	std::ifstream		conf_stream;
 	std::stringstream	ss;
 	std::string			raw;
@@ -61,7 +61,7 @@ Config::Config(const std::string &filename) : _path(filename){
 	this->_parse_server_conf(raw);
 }
 
-bool	Config::_open_file(const std::string &filename, std::ifstream& file){
+bool	ft::Config::_open_file(const std::string &filename, std::ifstream& file){
 	if (filename.empty() == true){
 		return false;
 	}
@@ -69,11 +69,11 @@ bool	Config::_open_file(const std::string &filename, std::ifstream& file){
 	return file.is_open();
 }
 
-void _cache_stream(std::ifstream& file, std::stringstream &cache_stream){
+void ft::Config::_cache_stream(std::ifstream& file, std::stringstream &cache_stream){
 	cache_stream << file.rdbuf();
 }
 
-std::string _parse_readable_lines(std::stringstream &cached_stream){
+std::string ft::Config::_parse_readable_lines(std::stringstream &cached_stream){
 	std::string	result;
 	std::string line;
 	std::size_t hash_pos;
@@ -90,7 +90,7 @@ std::string _parse_readable_lines(std::stringstream &cached_stream){
 	return result;
 }
 
-void Config::_parse_server_conf(const std::string &conf_str){
+void ft::Config::_parse_server_conf(const std::string &conf_str){
 	std::map<std::string, std::string> block_directives;
 	std::pair<long, ServerConfig> block_pair;
 
@@ -106,10 +106,10 @@ void Config::_parse_server_conf(const std::string &conf_str){
 	}
 }
 
-const std::string &Config::path(void) const{
+const std::string &ft::Config::path(void) const{
 	return this->_path;
 }
 
-const std::map<long, ServerConfig> Config::servers() const{
+const std::map<long, ft::ServerConfig> ft::Config::servers() const{
 	return this->_servers;
 }

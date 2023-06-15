@@ -1,12 +1,15 @@
-CXX = c++
+NAME = webserv
 
-CXXFLAGS = -Wall -Wextra -Werror -std=c++98 -pedantic
+SRCS_DIR = srcs
 
-SRCS = main.cpp
+SRCS = $(shell find . -name "*.cpp")
 
 OBJS = $(SRCS:.cpp=.o)
 
-NAME = webserv
+CXX = c++
+
+CXXFLAGS = -Wall -Wextra -Werror -std=c++98 -pedantic -Iincludes
+
 
 all : $(NAME)
 
@@ -22,4 +25,4 @@ fclean : clean
 
 re : fclean all
 
-.PHONY : all clean fclean re
+.PHONY : all clean fclean re test

@@ -12,6 +12,9 @@
 #include <sstream>
 #include <stdexcept>
 
+namespace ft
+{
+
 class Config : public BaseConfig
 {
 	private:
@@ -43,5 +46,7 @@ class Config : public BaseConfig
 		const std::string &path(void) const;
 		const std::map<long, ServerConfig> servers() const;
 };
+
+}
 
 #endif

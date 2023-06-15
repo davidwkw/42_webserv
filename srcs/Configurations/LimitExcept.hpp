@@ -4,7 +4,10 @@
 #include <string>
 #include <vector>
 #include "BaseConfig.hpp"
-#include "utils.hpp"
+#include "../utils/utils.hpp"
+
+namespace ft
+{	
 
 class LimitExcept : public BaseConfig{
 	private:
@@ -27,5 +30,6 @@ class LimitExcept : public BaseConfig{
 		const std::vector<std::string> &allow() const;
 		const std::vector<std::string> &deny() const;
 };
+}
 
 #endif
