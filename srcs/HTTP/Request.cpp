@@ -296,18 +296,12 @@ void Request::_parse_request_string(const std::string &header_section)
 	std::istringstream iss(header_section);
 	std::map<std::string, std::string>::iterator transfer_encoding;
 	std::map<std::string, std::string>::iterator content_length;
-	std::size_t begin_index = 0;
-	// std::size_t end_of_line_index = header_section.find(CRLF);
-	// std::size_t end_of_headers_index = header_section.find(CRLF CRLF);
 
 	if (header_section.find(CRLF) == std::string::npos)
 		throw std::runtime_error("Completely missing CRLF");
 	if (header_section.find(CRLF CRLF) == std::string::npos)
 		throw std::runtime_error("Missing CRLF CRLF break");
 	this->_parse_request_line(iss);
-	// this->_parse_request_line(header_section.substr(begin_index, end_of_line_index));
-	// begin_index = end_of_line_index + 2;
-	// end_of_line_index = header_section.find(CRLF, begin_index);
 	this->_parse_request_headers(iss);
 	if (this->_headers.find("Host") == this->_headers.end())
 		throw std::runtime_error("Host field not found.");
