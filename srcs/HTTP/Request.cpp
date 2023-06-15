@@ -193,7 +193,7 @@ void Request::_parse_request_headers(const std::string &header)
     std::istringstream iss(header);
     std::string line;
 
-	while (ft::getline_CRLF(iss, line) && line != "\r")
+	while (ft::getline_CRLF(iss, line) && !line.empty())
 	{
 		separator_index = line.find(':');
 		whitespace_index = line.find_first_of(" \n\t\f\r\v");
@@ -248,7 +248,8 @@ void Request::_parse_chunked_request_body(const std::string &request_body)
     std::string chunk_size_str;
     std::size_t chunk_size = 0;
 
-    while (std::getline(iss, line) && !line.empty()) {
+	while (ft::getline_CRLF(iss, line) && !line.empty())
+	{
         std::istringstream chunkLineStream(line);
         chunkLineStream >> std::hex >> chunk_size_str;
 
