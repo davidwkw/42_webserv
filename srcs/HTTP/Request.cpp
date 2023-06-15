@@ -79,44 +79,9 @@ std::string Request::_validate_method(std::string method)
 	throw std::runtime_error("Invalid method");
 }
 
-std::string _uri_decode(const std::string &encoded_url)
-{
-    std::string decodedUrl;
-    std::istringstream iss(encoded_url);
-
-    char ch;
-    int hexValue;
-    while (iss.get(ch)) {
-        if (ch == '%') {
-            // Read the next two characters as hexadecimal value
-            std::string hexDigits;
-
-            if (iss.get(ch) && std::isxdigit(ch)) {
-                hexDigits += ch;
-            }
-            if (iss.get(ch) && std::isxdigit(ch)) {
-                hexDigits += ch;
-            }
-
-            if (hexDigits.length() == 2) {
-                std::istringstream hexStream(hexDigits);
-                hexStream >> std::hex >> hexValue;
-                decodedUrl += static_cast<char>(hexValue);
-            } else {
-                // Invalid encoding, return original character
-                decodedUrl += '%';
-                decodedUrl += hexDigits;
-            }
-        } else {
-            decodedUrl += ch;
-        }
-    }
-    return decodedUrl;
-}
-
 std::string Request::_extract_uri(const std::string &uri_string)
 {
-	return this->_uri_decode(uri_string.substr(0, uri_string.find('?')));
+	return ft::url_decode(uri_string.substr(0, uri_string.find('?')));
 }
 
 // TO DO: double check if indexing is correct..
@@ -277,7 +242,7 @@ void Request::_parse_chunked_request_body(const std::string &request_body)
         // Process the chunk data as needed
         // For example, you can append it to a buffer or write it to a file
         oss.write(chunk_data.data(), chunk_size);
-		std::getline(iss, line);
+		ft::getline_CRLF(iss, line);
     }
 
     // Get the remaining part of the request (if any)

@@ -42,7 +42,6 @@ class Request
 		std::string _body;
 
 		std::string _extract_uri(const std::string &uri_string);
-		std::string _uri_decode(const std::string &encoded_url);
 		std::map<std::string, std::string> _extract_query(const std::string &uri_string);
 		std::string _validate_method(std::string method);
 		void _parse_request_line(const std::string &request_line);
