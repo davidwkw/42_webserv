@@ -96,3 +96,29 @@ unsigned long hex_str_to_ulong(const std::string &hex_str)
 
     return value;
 }
+
+bool getline_CRLF(std::istream& input, std::string& line)
+{
+    line.clear();
+
+    char prevChar = '\0';
+    char currentChar;
+
+    while (input.get(currentChar)) {
+        if (prevChar == '\r' && currentChar == '\n') {
+            return true;  // CRLF found, line complete
+        } else if (currentChar == '\r') {
+            continue;  // Skip CR, continue reading
+        } else {
+            line += prevChar;
+            prevChar = currentChar;
+        }
+    }
+
+    // Check if the last character is part of a line
+    if (prevChar != '\0') {
+        line += prevChar;
+    }
+
+    return !line.empty();  // Line incomplete if empty
+}

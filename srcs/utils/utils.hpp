@@ -21,6 +21,7 @@ std::string str_char_limit_span(const std::string &str, char open, char close);
 std::vector<std::string> tokenise_str(const std::string & str, char c = ' ');
 std::pair<std::string, std::string> extract_key_value_pair(const std::string &str, char delimiter_key);
 unsigned long hex_str_to_ulong(const std::string &hex_str);
+bool getline_CRLF(std::istream& input, std::string& line);
 
 template<bool Cond, class T = void>
 struct enable_if {};
