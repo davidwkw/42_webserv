@@ -119,3 +119,38 @@ bool getline_CRLF(std::istream& input, std::string& line)
 
     return false;  // Line incomplete if empty
 }
+
+std::string url_decode(const std::string &encoded_url)
+{
+    std::string decodedUrl;
+    std::istringstream iss(encoded_url);
+
+    char ch;
+    int hexValue;
+    while (iss.get(ch)) {
+        if (ch == '%') {
+            // Read the next two characters as hexadecimal value
+            std::string hexDigits;
+
+            if (iss.get(ch) && std::isxdigit(ch)) {
+                hexDigits += ch;
+            }
+            if (iss.get(ch) && std::isxdigit(ch)) {
+                hexDigits += ch;
+            }
+
+            if (hexDigits.length() == 2) {
+                std::istringstream hexStream(hexDigits);
+                hexStream >> std::hex >> hexValue;
+                decodedUrl += static_cast<char>(hexValue);
+            } else {
+                // Invalid encoding, return original character
+                decodedUrl += '%';
+                decodedUrl += hexDigits;
+            }
+        } else {
+            decodedUrl += ch;
+        }
+    }
+    return decodedUrl;
+}
