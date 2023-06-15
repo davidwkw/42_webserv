@@ -45,18 +45,18 @@ Request &Request::operator=(const Request &src)
 
 #pragma region Class_Utility
 
-void Request::_validate_request_start_line_break(const std::string &headers)
-{
-	const std::string whitespace_characters = " \n\t\f\r\v";
+// void Request::_validate_request_start_line_break(const std::string &headers)
+// {
+// 	const std::string whitespace_characters = " \n\t\f\r\v";
 
-	std::size_t whitespace_index;
-	std::size_t not_whitespace_index;
+// 	std::size_t whitespace_index;
+// 	std::size_t not_whitespace_index;
 
-	whitespace_index = headers.find_first_of(whitespace_characters);
-	not_whitespace_index = headers.find_first_not_of(whitespace_characters);
-	if (whitespace_index < not_whitespace_index)
-		throw std::runtime_error("Whitespace found before CRLF");
-}
+// 	whitespace_index = headers.find_first_of(whitespace_characters);
+// 	not_whitespace_index = headers.find_first_not_of(whitespace_characters);
+// 	if (whitespace_index < not_whitespace_index)
+// 		throw std::runtime_error("Whitespace found before CRLF");
+// }
 
 std::string Request::_validate_method(std::string method)
 {
@@ -108,11 +108,11 @@ std::map<std::string, std::string> Request::_extract_query(const std::string &ur
 	return return_map;
 }
 
-void Request::_parse_request_line(std::istream& iss, std::string& line)
+void Request::_parse_request_line(std::istream& iss)
 {
 	std::vector<std::string> request_line_tokens;
-	
-	line.clear();
+	std::string line;
+
 	ft::getline_CRLF(iss, line);
 	request_line_tokens = tokenise_str(line);
 	if (request_line_tokens.size() != 3)
@@ -151,14 +151,13 @@ void Request::_handle_duplicate_headers(const std::string &key, std::string &ori
 	}
 }
 
-void Request::_parse_request_headers(const std::string &header)
+void Request::_parse_request_headers(std::istream& iss)
 {
+	std::string line;
 	std::size_t separator_index;
 	std::size_t whitespace_index;
 	std::pair<std::string, std::string> header_field_pair;
 	std::pair<std::map<std::string, std::string>::iterator,bool> insert_return;
-    std::istringstream iss(header);
-    std::string line;
 
 	while (ft::getline_CRLF(iss, line) && !line.empty())
 	{
@@ -172,6 +171,7 @@ void Request::_parse_request_headers(const std::string &header)
 		if (insert_return.second == false)
 			this->_handle_duplicate_headers((*insert_return.first).first, (*insert_return.first).second, header_field_pair.second);
     }
+	ft::getline_CRLF(iss, line);
 }
 
 // void Request::_parse_request_headers(const std::string &header)
@@ -207,9 +207,8 @@ void Request::_parse_request_headers(const std::string &header)
 // 	}
 // }
 
-void Request::_parse_chunked_request_body(const std::string &request_body)
+void Request::_parse_chunked_request_body(std::istream& iss)
 {
-	std::istringstream iss(request_body);
     std::string line;
 	std::ostringstream oss;
     std::string chunk_size_str;
@@ -246,11 +245,8 @@ void Request::_parse_chunked_request_body(const std::string &request_body)
         oss.write(chunk_data.data(), chunk_size);
 		ft::getline_CRLF(iss, line);
     }
-
-    // Get the remaining part of the request (if any)
-
     // Process the complete request
-	
+	this->_body = oss.str();
 }
 
 // void Request::_parse_chunked_request_body(const std::string &request_body)
@@ -289,21 +285,15 @@ void Request::_parse_chunked_request_body(const std::string &request_body)
 // 	}
 // }
 
-void Request::_parse_encoded_request_body(const std::string &request_body)
+void Request::_parse_encoded_request_body(std::istream& iss)
 {
-	std::size_t trailing_header_begin = request_body.find(CRLF CRLF);
-	std::size_t	trailing_header_end = request_body.rfind(CRLF CRLF);
-
-	this->_parse_chunked_request_body(request_body);
-	if (trailing_header_begin == trailing_header_end)
-		return;
-	this->_parse_request_headers(request_body.substr(trailing_header_begin + 4, request_body.rfind(CRLF CRLF) + 4));
+	this->_parse_chunked_request_body(iss);
+	this->_parse_request_headers(iss);
 }
 
 void Request::_parse_request_string(const std::string &header_section)
 {
 	std::istringstream iss(header_section);
-	std::string line;
 	std::map<std::string, std::string>::iterator transfer_encoding;
 	std::map<std::string, std::string>::iterator content_length;
 	std::size_t begin_index = 0;
@@ -314,17 +304,11 @@ void Request::_parse_request_string(const std::string &header_section)
 		throw std::runtime_error("Completely missing CRLF");
 	if (header_section.find(CRLF CRLF) == std::string::npos)
 		throw std::runtime_error("Missing CRLF CRLF break");
-	ft::getline_CRLF(iss, line);
-	this->_parse_request_line(iss, line);
-	ft::getline_CRLF(iss, line);
-	if (line.empty())
-		return;
-	while ()
+	this->_parse_request_line(iss);
 	// this->_parse_request_line(header_section.substr(begin_index, end_of_line_index));
 	// begin_index = end_of_line_index + 2;
 	// end_of_line_index = header_section.find(CRLF, begin_index);
-	this->_validate_request_start_line_break(header_section.substr(begin_index, end_of_line_index + 2));
-	this->_parse_request_headers(header_section.substr(begin_index, end_of_headers_index));
+	this->_parse_request_headers(iss);
 	if (this->_headers.find("Host") == this->_headers.end())
 		throw std::runtime_error("Host field not found.");
 	transfer_encoding = this->_headers.find("Transfer-Encoding");
@@ -337,7 +321,7 @@ void Request::_parse_request_string(const std::string &header_section)
 		throw std::runtime_error("Both Transfer-Encoding and Content-Length found");
 	// Parsing request body
 	if (transfer_encoding != this->_headers.end())
-		this->_parse_encoded_request_body(header_section);
+		this->_parse_encoded_request_body(iss);
 	// else if (content_length != this->_headers.end())
 	// 	this->_parse_request_body(header_section, content_length);
 }
