@@ -44,7 +44,7 @@ class Request
 		std::string _extract_uri(const std::string &uri_string);
 		std::map<std::string, std::string> _extract_query(const std::string &uri_string);
 		std::string _validate_method(std::string method);
-		void _parse_request_line(const std::string &request_line);
+		void _parse_request_line(std::istream& iss, std::string& line);
 		void _validate_request_start_line_break(const std::string &headers);
 		void _validate_header_field(const std::pair<std::string, std::string> &header_pair);
 		void _handle_duplicate_headers(const std::string &key, std::string &original_value, const std::string &duplicate_value);

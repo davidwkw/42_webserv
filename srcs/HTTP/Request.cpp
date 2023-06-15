@@ -108,10 +108,12 @@ std::map<std::string, std::string> Request::_extract_query(const std::string &ur
 	return return_map;
 }
 
-void Request::_parse_request_line(const std::string &line)
+void Request::_parse_request_line(std::istream& iss, std::string& line)
 {
 	std::vector<std::string> request_line_tokens;
-
+	
+	line.clear();
+	ft::getline_CRLF(iss, line);
 	request_line_tokens = tokenise_str(line);
 	if (request_line_tokens.size() != 3)
 	{
@@ -247,11 +249,6 @@ void Request::_parse_chunked_request_body(const std::string &request_body)
 
     // Get the remaining part of the request (if any)
 
-	while (std::getline(iss, line) && line != "\r") {
-        // Process request headers as needed
-        std::cout << "Header: " << line << std::endl;
-    }
-
     // Process the complete request
 	
 }
@@ -305,22 +302,28 @@ void Request::_parse_encoded_request_body(const std::string &request_body)
 
 void Request::_parse_request_string(const std::string &header_section)
 {
+	std::istringstream iss(header_section);
+	std::string line;
 	std::map<std::string, std::string>::iterator transfer_encoding;
 	std::map<std::string, std::string>::iterator content_length;
 	std::size_t begin_index = 0;
-	std::size_t end_of_line_index = header_section.find(CRLF);
-	std::size_t end_of_headers_index = header_section.find(CRLF CRLF);
+	// std::size_t end_of_line_index = header_section.find(CRLF);
+	// std::size_t end_of_headers_index = header_section.find(CRLF CRLF);
 
-	if (end_of_line_index == std::string::npos)
+	if (header_section.find(CRLF) == std::string::npos)
 		throw std::runtime_error("Completely missing CRLF");
-	if (end_of_headers_index  == std::string::npos)
-		throw std::runtime_error("Missing header break");
-	this->_parse_request_line(header_section.substr(begin_index, end_of_line_index));
-	begin_index = end_of_line_index + 2;
-	end_of_line_index = header_section.find(CRLF, begin_index);
-	if (end_of_line_index == end_of_headers_index)
+	if (header_section.find(CRLF CRLF) == std::string::npos)
+		throw std::runtime_error("Missing CRLF CRLF break");
+	ft::getline_CRLF(iss, line);
+	this->_parse_request_line(iss, line);
+	ft::getline_CRLF(iss, line);
+	if (line.empty())
 		return;
-	this->_validate_request_start_line_break(header_section.substr(begin_index, end_of_line_index));
+	while ()
+	// this->_parse_request_line(header_section.substr(begin_index, end_of_line_index));
+	// begin_index = end_of_line_index + 2;
+	// end_of_line_index = header_section.find(CRLF, begin_index);
+	this->_validate_request_start_line_break(header_section.substr(begin_index, end_of_line_index + 2));
 	this->_parse_request_headers(header_section.substr(begin_index, end_of_headers_index));
 	if (this->_headers.find("Host") == this->_headers.end())
 		throw std::runtime_error("Host field not found.");
