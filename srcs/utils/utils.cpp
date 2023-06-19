@@ -154,3 +154,13 @@ std::string url_decode(const std::string &encoded_url)
     }
     return decodedUrl;
 }
+
+std::string string_vector_to_string(const std::vector<std::string> &vect, char delimiter = ' ')
+{
+	std::stringstream ss;
+  
+    for (std::vector<std::string>::const_iterator cit = vect.begin(); cit != vect.end() ;cit++) {
+        ss << *cit << delimiter;
+    }
+    return ss.str();
+}
