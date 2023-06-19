@@ -66,9 +66,9 @@ ServerConfig &ServerConfig::operator=(const ServerConfig &ref){
 	return *this;
 }
 
-ServerConfig::ServerConfig(BaseConfig::directive_container_type directives, const std::string &location_str) : BaseConfig(directives, ServerConfig::all_directives_set) {
-	this->_directives = BaseConfig::parse_all_directives(location_str, ServerConfig::all_directives_set);
-	this->_parse_location_conf(location_str);
+ServerConfig::ServerConfig(BaseConfig::directive_container_type directives, const std::string &server_str) : BaseConfig(directives, ServerConfig::all_directives_set) {
+	this->_directives = BaseConfig::parse_all_directives(server_str, ServerConfig::all_directives_set);
+	this->_parse_location_conf(server_str);
 }
 
 void 	ServerConfig::_parse_location_conf(const std::string &cached_string){
@@ -113,8 +113,8 @@ const std::vector<std::string> ServerConfig::client_body_temp_path() const{
 	return this->find_normal_directive("client_body_temp_path");
 }
 
-const std::vector<std::string> ServerConfig::root() const{
-	return this->find_normal_directive("root");
+const std::string ServerConfig::root() const{
+	return this->find_normal_directive("root").back();
 }
 
 const std::vector<std::string> ServerConfig::try_files() const{
@@ -139,6 +139,14 @@ const std::vector<std::string> ServerConfig::index() const{
 
 const std::vector<std::string> ServerConfig::error_log() const{
 	return this->find_normal_directive("error_log");
+}
+
+const std::vector<int> ServerConfig::ports() const{
+	std::vector<int> ret_vector;
+
+	for (std::vector< std::vector<std::string>)
+
+	return ret_vector;
 }
 
 }

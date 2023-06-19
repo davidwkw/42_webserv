@@ -43,12 +43,13 @@ class ServerConfig : public BaseConfig{
 		const std::vector<std::vector<std::string> > error_page() const;
 		const std::vector<std::string> index() const;
 		const std::vector<std::string> client_body_temp_path() const;
-		const std::vector<std::string> root() const;
 		const std::vector<std::string> try_files() const;
 		const std::vector<std::string> client_max_body_size() const;
 		const std::vector<std::string> autoindex() const;
 		const std::vector<std::string> index() const;
 		const std::vector<std::string> error_log() const;
+		const std::string root() const;
+		const std::vector<int> ports() const;
 
 #pragma endregion Getters
 };
