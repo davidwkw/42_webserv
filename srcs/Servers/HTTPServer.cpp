@@ -3,6 +3,8 @@
 namespace ft
 {
 
+#pragma region Constructors
+
 HTTPServer::HTTPServer(int port, int backlog) : Server(AF_INET, SOCK_STREAM, 0, port, INADDR_ANY, backlog)
 {
 }
@@ -10,6 +12,8 @@ HTTPServer::HTTPServer(int port, int backlog) : Server(AF_INET, SOCK_STREAM, 0, 
 HTTPServer::~HTTPServer()
 {
 }
+
+#pragma endregion Constructors
 
 void HTTPServer::accepter()
 {	
@@ -57,7 +61,6 @@ int HTTPServer::get_port() const
 {
 	return this->_port;
 }
-
 
 #pragma endregion Getters
 
