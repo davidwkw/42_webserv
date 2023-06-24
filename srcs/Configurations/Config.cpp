@@ -104,7 +104,10 @@ void ft::Config::_parse_server_conf(const std::string &conf_str){
 		else
 			throw std::runtime_error("[Config] Invalid block directive for this context");
 	}
+	
 }
+
+#pragma region Getters
 
 const std::string &ft::Config::path(void) const{
 	return this->_path;
@@ -113,3 +116,5 @@ const std::string &ft::Config::path(void) const{
 const std::map<long, ft::ServerConfig> ft::Config::servers() const{
 	return this->_servers;
 }
+
+#pragma endregion Getters

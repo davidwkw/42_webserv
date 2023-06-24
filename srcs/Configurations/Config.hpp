@@ -20,6 +20,7 @@ class Config : public BaseConfig
 	private:
 		std::string							_path;
 		std::map<long, ServerConfig>		_servers;
+		std::set<int>						_all_webserver_ports;
 
 		static const char					*all_directives_array[];
 		static const char 					*normal_directives_array[];
@@ -45,6 +46,7 @@ class Config : public BaseConfig
 
 		const std::string &path(void) const;
 		const std::map<long, ServerConfig> servers() const;
+		std::set<int> get_all_webserver_ports() const;
 };
 
 }
