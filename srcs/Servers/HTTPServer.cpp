@@ -9,7 +9,6 @@ HTTPServer::HTTPServer(int port, int backlog) : Server(AF_INET, SOCK_STREAM, 0, 
 
 HTTPServer::~HTTPServer()
 {
-	
 }
 
 void HTTPServer::accepter()
@@ -42,16 +41,24 @@ void HTTPServer::responder()
 	close(this->_accept_fd);
 }
 
-void HTTPServer::launch()
+#pragma region Getters
+
+int HTTPServer::get_listen_socket_fd() const
 {
-	while (true)
-	{
-		std::cout << "========== Waiting ==========" << std::endl;
-		this->accepter();
-		this->handler();
-		this->responder();
-		std::cout << "========== DONE ==========" << std::endl;
-	}
+	return this->_socket->get_sock();
 }
+
+int HTTPServer::get_accept_fd() const
+{
+	return this->_accept_fd;
+}
+
+int HTTPServer::get_port() const
+{
+	return this->_port;
+}
+
+
+#pragma endregion Getters
 
 }

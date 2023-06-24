@@ -12,15 +12,21 @@ class HTTPServer : public Server
 	private:
 		char _buffer[BUFFER_SIZE];
 		int _accept_fd;
+		int _port;
+
 
 	public:
 		HTTPServer(int port, int backlog);
 		virtual ~HTTPServer();
-		
+
 		void accepter();
 		void handler();
 		void responder();
 		void launch();
+
+		int get_listen_socket_fd() const;
+		int get_accept_fd() const;
+		int get_port() const;
 };
 
 }

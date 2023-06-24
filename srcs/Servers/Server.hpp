@@ -11,7 +11,7 @@ class Server
 {
 	protected:
 		ListeningSocket *_socket;
-		virtual void acceptor() = 0;
+		virtual void accepter() = 0;
 		virtual void handler() = 0;
 		virtual void responder() = 0;
 	public:
