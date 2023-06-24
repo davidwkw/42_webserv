@@ -3,6 +3,9 @@
 namespace ft
 {
 
+#pragma region ClassVariables
+
+
 const char *WebserverConfig::all_directives_array[] =	{
 												"user",
 												"pid",
@@ -32,22 +35,16 @@ const std::set<std::string> WebserverConfig::array_directives_set = init_string_
 
 const std::set<std::string> WebserverConfig::block_directives_set = init_string_set(WebserverConfig::block_directives_array);
 
+#pragma endregion ClassVariables
+
+#pragma region Constructors
+
 WebserverConfig::WebserverConfig(void) : _path(){}
 
 WebserverConfig::~WebserverConfig(void){}
 
 WebserverConfig::WebserverConfig(const WebserverConfig &ref){
 	*this = ref;
-}
-
-WebserverConfig &WebserverConfig::operator=(const WebserverConfig &ref){
-	if (this != &ref)
-	{
-		this->_path = ref._path;
-		this->_directives = ref._directives;
-		this->_servers = ref._servers;
-	}
-	return *this;
 }
 
 WebserverConfig::WebserverConfig(const std::string &filename) : _path(filename){
@@ -63,6 +60,24 @@ WebserverConfig::WebserverConfig(const std::string &filename) : _path(filename){
 	this->_directives = Config::parse_all_directives(raw, WebserverConfig::all_directives_set);
 	this->_parse_server_conf(raw);
 }
+
+#pragma endregion Constructors
+
+#pragma region OperatorOverloads
+
+WebserverConfig &WebserverConfig::operator=(const WebserverConfig &ref){
+	if (this != &ref)
+	{
+		this->_path = ref._path;
+		this->_directives = ref._directives;
+		this->_servers = ref._servers;
+	}
+	return *this;
+}
+
+#pragma endregion OperatorOverloads
+
+#pragma region ClassUtilities
 
 bool	WebserverConfig::_open_file(const std::string &filename, std::ifstream& file){
 	if (filename.empty() == true){
@@ -113,6 +128,8 @@ void WebserverConfig::_parse_server_conf(const std::string &conf_str){
 	}
 	
 }
+
+#pragma endregion ClassUtilities
 
 #pragma region Getters
 
