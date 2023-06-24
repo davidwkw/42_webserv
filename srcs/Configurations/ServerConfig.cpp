@@ -141,11 +141,13 @@ const std::vector<std::string> ServerConfig::error_log() const{
 	return this->find_normal_directive("error_log");
 }
 
-const std::vector<int> ServerConfig::ports() const{
-	std::vector<int> ret_vector;
+const std::vector<unsigned int> ServerConfig::ports() const{
+	std::vector<unsigned int> ret_vector;
 
-	for (std::vector< std::vector<std::string>)
-
+	for (std::vector<std::vector<std::string> >::const_iterator cit = this->listen().begin(); cit != this->listen().end(); cit++)
+	{
+		ret_vector.push_back(std::strtoul(cit->back().c_str(), NULL, 10));
+	}
 	return ret_vector;
 }
 

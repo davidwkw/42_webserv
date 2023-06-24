@@ -6,7 +6,7 @@
 #include <sstream>
 #include "LocationConfig.hpp"
 #include "BaseConfig.hpp"
-#include "Config.hpp"
+#include "WebserverConfig.hpp"
 #include "webserv.hpp"
 
 namespace ft
@@ -49,7 +49,7 @@ class ServerConfig : public BaseConfig{
 		const std::vector<std::string> index() const;
 		const std::vector<std::string> error_log() const;
 		const std::string root() const;
-		const std::vector<int> ports() const;
+		const std::vector<unsigned int> ports() const;
 
 #pragma endregion Getters
 };

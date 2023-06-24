@@ -1,46 +1,46 @@
-#include "Config.hpp"
+#include "WebserverConfig.hpp"
 
 namespace ft
 {
 
-const char *Config::all_directives_array[] =	{
+const char *WebserverConfig::all_directives_array[] =	{
 												"user",
 												"pid",
 												"worker_processes",
 												"error_log"
 												};
 
-const char *Config::normal_directives_array[] =	{
+const char *WebserverConfig::normal_directives_array[] =	{
 												"user",
 												"pid",
 												"worker_processes",
 												};
 
-const char *Config::array_directives_array[] =	{
+const char *WebserverConfig::array_directives_array[] =	{
 												"error_log",
 												};
 									
-const char *Config::block_directives_array[] = 	{
+const char *WebserverConfig::block_directives_array[] = 	{
 												"server"
 												};
 
-const std::set<std::string> Config::all_directives_set = init_string_set(Config::all_directives_array);
+const std::set<std::string> WebserverConfig::all_directives_set = init_string_set(WebserverConfig::all_directives_array);
 
-const std::set<std::string> Config::normal_directives_set = init_string_set(Config::normal_directives_array);
+const std::set<std::string> WebserverConfig::normal_directives_set = init_string_set(WebserverConfig::normal_directives_array);
 
-const std::set<std::string> Config::array_directives_set = init_string_set(Config::array_directives_array);
+const std::set<std::string> WebserverConfig::array_directives_set = init_string_set(WebserverConfig::array_directives_array);
 
-const std::set<std::string> Config::block_directives_set = init_string_set(Config::block_directives_array);
+const std::set<std::string> WebserverConfig::block_directives_set = init_string_set(WebserverConfig::block_directives_array);
 
-Config::Config(void) : _path(){}
+WebserverConfig::WebserverConfig(void) : _path(){}
 
-Config::~Config(void){}
+WebserverConfig::~WebserverConfig(void){}
 
-Config::Config(const Config &ref){
+WebserverConfig::WebserverConfig(const WebserverConfig &ref){
 	*this = ref;
 }
 
-Config &Config::operator=(const Config &ref){
+WebserverConfig &WebserverConfig::operator=(const WebserverConfig &ref){
 	if (this != &ref)
 	{
 		this->_path = ref._path;
@@ -50,21 +50,21 @@ Config &Config::operator=(const Config &ref){
 	return *this;
 }
 
-Config::Config(const std::string &filename) : _path(filename){
+WebserverConfig::WebserverConfig(const std::string &filename) : _path(filename){
 	std::ifstream		conf_stream;
 	std::stringstream	ss;
 	std::string			raw;
 	
 	if (this->_open_file(filename, conf_stream) == false) 
-		throw std::runtime_error("[Config] Unable to open path " + filename);
+		throw std::runtime_error("[WebserverConfig] Unable to open path " + filename);
 	this->_cache_stream(conf_stream, ss);
 	conf_stream.close();
 	raw = this->_parse_readable_lines(ss);
-	this->_directives = BaseConfig::parse_all_directives(raw, Config::all_directives_set);
+	this->_directives = BaseConfig::parse_all_directives(raw, WebserverConfig::all_directives_set);
 	this->_parse_server_conf(raw);
 }
 
-bool	Config::_open_file(const std::string &filename, std::ifstream& file){
+bool	WebserverConfig::_open_file(const std::string &filename, std::ifstream& file){
 	if (filename.empty() == true){
 		return false;
 	}
@@ -72,11 +72,11 @@ bool	Config::_open_file(const std::string &filename, std::ifstream& file){
 	return file.is_open();
 }
 
-void Config::_cache_stream(std::ifstream& file, std::stringstream &cache_stream){
+void WebserverConfig::_cache_stream(std::ifstream& file, std::stringstream &cache_stream){
 	cache_stream << file.rdbuf();
 }
 
-std::string Config::_parse_readable_lines(std::stringstream &cached_stream){
+std::string WebserverConfig::_parse_readable_lines(std::stringstream &cached_stream){
 	std::string	result;
 	std::string line;
 	std::size_t hash_pos;
@@ -93,7 +93,7 @@ std::string Config::_parse_readable_lines(std::stringstream &cached_stream){
 	return result;
 }
 
-void Config::_parse_server_conf(const std::string &conf_str){
+void WebserverConfig::_parse_server_conf(const std::string &conf_str){
 	std::map<std::string, std::string> block_directives;
 	std::pair<long, ServerConfig> block_pair;
 
@@ -109,24 +109,24 @@ void Config::_parse_server_conf(const std::string &conf_str){
 			}
 		}
 		else
-			throw std::runtime_error("[Config] Invalid block directive for this context");
+			throw std::runtime_error("[WebserverConfig] Invalid block directive for this context");
 	}
 	
 }
 
 #pragma region Getters
 
-const std::string &Config::path(void) const
+const std::string &WebserverConfig::path(void) const
 {
 	return this->_path;
 }
 
-const std::map<long, ServerConfig> Config::servers() const
+const std::map<long, ServerConfig> WebserverConfig::servers() const
 {
 	return this->_servers;
 }
 
-std::set<unsigned int> Config::get_all_webserver_ports() const
+std::set<unsigned int> WebserverConfig::get_all_webserver_ports() const
 {
 	return this->_all_webserver_ports;
 }

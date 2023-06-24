@@ -52,6 +52,7 @@ class Request
 		void _parse_request_headers(std::istream& iss);
 		void _parse_chunked_request_body(std::istream& iss);
 		void _parse_encoded_request_body(std::istream& iss);
+		void _parse_content_type(const std::string *content_type, std::istream& iss);
 		
 	public:
 		Request();

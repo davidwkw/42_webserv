@@ -15,7 +15,7 @@
 namespace ft
 {
 
-class Config : public BaseConfig
+class WebserverConfig : public BaseConfig
 {
 	private:
 		std::string							_path;
@@ -38,11 +38,11 @@ class Config : public BaseConfig
 		void 		_parse_server_conf(const std::string &cached_string);
 
 	public:
-		Config(void);
-		~Config(void);
-		Config(const Config &ref);
-		Config &operator=(const Config &ref);
-		Config(const std::string &filename);
+		WebserverConfig(void);
+		~WebserverConfig(void);
+		WebserverConfig(const WebserverConfig &ref);
+		WebserverConfig &operator=(const WebserverConfig &ref);
+		WebserverConfig(const std::string &filename);
 
 		const std::string &path(void) const;
 		const std::map<long, ServerConfig> servers() const;

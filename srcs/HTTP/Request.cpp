@@ -176,39 +176,6 @@ void Request::_parse_request_headers(std::istream& iss)
 	ft::getline_CRLF(iss, line);
 }
 
-// void Request::_parse_request_headers(const std::string &header)
-// {
-// 	std::size_t begin_index;
-// 	std::size_t end_of_headers_index;
-// 	std::size_t end_of_line_index;
-// 	std::size_t separator_index;
-// 	std::size_t whitespace_index;
-// 	std::string header_line;
-// 	std::pair<std::string, std::string> header_field_pair;
-// 	std::pair<std::map<std::string, std::string>::iterator,bool> insert_return;
-	
-// 	begin_index = 0;
-// 	end_of_line_index = header.find(CRLF);
-// 	end_of_headers_index = header.find(CRLF CRLF);
-// 	if (end_of_line_index == std::string::npos || end_of_headers_index == std::string::npos)
-// 		return;
-// 	while (begin_index != end_of_headers_index)
-// 	{
-// 		header_line = header.substr(begin_index, end_of_line_index);
-// 		separator_index = header_line.find(':');
-// 		whitespace_index = header_line.find_first_of(" \n\t\f\r\v");
-// 		if (whitespace_index < separator_index)
-// 			throw std::runtime_error("Whitespace found before : during header parsing");
-// 		header_field_pair = extract_key_value_pair(header_line, ':');
-// 		this->_validate_header_field(header_field_pair);
-// 		insert_return = this->_headers.insert(header_field_pair);
-// 		if (insert_return.second == false)
-// 			this->_handle_duplicate_headers((*insert_return.first).first, (*insert_return.first).second, header_field_pair.second);
-// 		begin_index = end_of_line_index + 2;
-// 		end_of_line_index = header.find(CRLF, begin_index);
-// 	}
-// }
-
 void Request::_parse_chunked_request_body(std::istream& iss)
 {
     std::string line;
@@ -251,57 +218,29 @@ void Request::_parse_chunked_request_body(std::istream& iss)
 	this->_body = oss.str();
 }
 
-// void Request::_parse_chunked_request_body(const std::string &request_body)
-// {
-// 	enum ChunkSequence
-// 	{
-// 		CHUNK_SIZE,
-// 		MESSAGE_CHUNK,
-// 		CHUNK_SEQUENCE_SIZE
-// 	};
-
-// 	long int chunk_size = 0;
-// 	std::size_t begin_of_line = 0;
-// 	std::size_t end_of_line = request_body.find(CRLF);
-// 	std::size_t sequence = 0;
-
-// 	while ()
-// 	{
-// 		if (sequence == CHUNK_SIZE)
-// 		{
-// 			chunk_size = std::strtol(request_body.substr(begin_of_line, end_of_line - begin_of_line).c_str() , NULL, 10);
-// 			// technically chunk extension can proceed the chunk size hex after ; separated into key value pair by =
-// 			if (chunk_size == 0)
-// 				break;
-// 		}
-// 		else if (sequence == MESSAGE_CHUNK)
-// 		{
-// 			std::string message_chunk = request_body.substr(begin_of_line, end_of_line - begin_of_line);
-// 			if (chunk_size != message_chunk.length())
-// 				throw std::runtime_error("SOMETHING FUCKED UP. WE'RE MISSING SOME THE REST OF THE MESSAGE");
-// 			this->_body += message_chunk;
-// 		}
-// 		sequence = (sequence + 1) % CHUNK_SEQUENCE_SIZE;
-// 		begin_of_line = end_of_line + 2;
-// 		end_of_line = request_body.find(CRLF);
-// 	}
-// }
-
 void Request::_parse_encoded_request_body(std::istream& iss)
 {
 	this->_parse_chunked_request_body(iss);
 	this->_parse_request_headers(iss);
 }
 
-void Request::_parse_request_string(const std::string &header_section)
+// void Request::_parse_content_type(const std::string *content_type, std::istream& iss)
+// {
+// 	if (content_type == "application/x-www-form-urlencoded")
+// 		// do something
+// 	else if (content_type == "multipart/form-data")
+// 		// do something
+// }
+
+void Request::_parse_request_string(const std::string &request_str)
 {
-	std::istringstream iss(header_section);
+	std::istringstream iss(request_str);
 	std::map<std::string, std::string>::iterator transfer_encoding;
 	std::map<std::string, std::string>::iterator content_length;
 
-	if (header_section.find(CRLF) == std::string::npos)
+	if (request_str.find(CRLF) == std::string::npos)
 		throw std::runtime_error("Completely missing CRLF");
-	if (header_section.find(CRLF CRLF) == std::string::npos)
+	if (request_str.find(CRLF CRLF) == std::string::npos)
 		throw std::runtime_error("Missing CRLF CRLF break");
 	this->_parse_request_line(iss);
 	this->_parse_request_headers(iss);
@@ -319,7 +258,10 @@ void Request::_parse_request_string(const std::string &header_section)
 	if (transfer_encoding != this->_headers.end())
 		this->_parse_encoded_request_body(iss);
 	// else if (content_length != this->_headers.end())
-	// 	this->_parse_request_body(header_section, content_length);
+	// 	request_str.substr(0, this->_headers)
+		// this->_parse_request_body(request_str, content_length);
+	// else if (this->_headers.find("Content-Type") != this->_headers.end())
+	// 	this->_parse_content_type(this->_headers["Content-Type"], iss);
 }
 
 #pragma endregion Class_Utility
