@@ -1,43 +1,46 @@
 #include "Config.hpp"
 
-const char *ft::Config::all_directives_array[] =	{
+namespace ft
+{
+
+const char *Config::all_directives_array[] =	{
 												"user",
 												"pid",
 												"worker_processes",
 												"error_log"
 												};
 
-const char *ft::Config::normal_directives_array[] =	{
+const char *Config::normal_directives_array[] =	{
 												"user",
 												"pid",
 												"worker_processes",
 												};
 
-const char *ft::Config::array_directives_array[] =	{
+const char *Config::array_directives_array[] =	{
 												"error_log",
 												};
 									
-const char *ft::Config::block_directives_array[] = 	{
+const char *Config::block_directives_array[] = 	{
 												"server"
 												};
 
-const std::set<std::string> ft::Config::all_directives_set = init_string_set(ft::Config::all_directives_array);
+const std::set<std::string> Config::all_directives_set = init_string_set(Config::all_directives_array);
 
-const std::set<std::string> ft::Config::normal_directives_set = init_string_set(ft::Config::normal_directives_array);
+const std::set<std::string> Config::normal_directives_set = init_string_set(Config::normal_directives_array);
 
-const std::set<std::string> ft::Config::array_directives_set = init_string_set(ft::Config::array_directives_array);
+const std::set<std::string> Config::array_directives_set = init_string_set(Config::array_directives_array);
 
-const std::set<std::string> ft::Config::block_directives_set = init_string_set(ft::Config::block_directives_array);
+const std::set<std::string> Config::block_directives_set = init_string_set(Config::block_directives_array);
 
-ft::Config::Config(void) : _path(){}
+Config::Config(void) : _path(){}
 
-ft::Config::~Config(void){}
+Config::~Config(void){}
 
-ft::Config::Config(const Config &ref){
+Config::Config(const Config &ref){
 	*this = ref;
 }
 
-ft::Config &ft::Config::operator=(const Config &ref){
+Config &Config::operator=(const Config &ref){
 	if (this != &ref)
 	{
 		this->_path = ref._path;
@@ -47,7 +50,7 @@ ft::Config &ft::Config::operator=(const Config &ref){
 	return *this;
 }
 
-ft::Config::Config(const std::string &filename) : _path(filename){
+Config::Config(const std::string &filename) : _path(filename){
 	std::ifstream		conf_stream;
 	std::stringstream	ss;
 	std::string			raw;
@@ -61,7 +64,7 @@ ft::Config::Config(const std::string &filename) : _path(filename){
 	this->_parse_server_conf(raw);
 }
 
-bool	ft::Config::_open_file(const std::string &filename, std::ifstream& file){
+bool	Config::_open_file(const std::string &filename, std::ifstream& file){
 	if (filename.empty() == true){
 		return false;
 	}
@@ -69,11 +72,11 @@ bool	ft::Config::_open_file(const std::string &filename, std::ifstream& file){
 	return file.is_open();
 }
 
-void ft::Config::_cache_stream(std::ifstream& file, std::stringstream &cache_stream){
+void Config::_cache_stream(std::ifstream& file, std::stringstream &cache_stream){
 	cache_stream << file.rdbuf();
 }
 
-std::string ft::Config::_parse_readable_lines(std::stringstream &cached_stream){
+std::string Config::_parse_readable_lines(std::stringstream &cached_stream){
 	std::string	result;
 	std::string line;
 	std::size_t hash_pos;
@@ -90,7 +93,7 @@ std::string ft::Config::_parse_readable_lines(std::stringstream &cached_stream){
 	return result;
 }
 
-void ft::Config::_parse_server_conf(const std::string &conf_str){
+void Config::_parse_server_conf(const std::string &conf_str){
 	std::map<std::string, std::string> block_directives;
 	std::pair<long, ServerConfig> block_pair;
 
@@ -109,12 +112,21 @@ void ft::Config::_parse_server_conf(const std::string &conf_str){
 
 #pragma region Getters
 
-const std::string &ft::Config::path(void) const{
+const std::string &Config::path(void) const
+{
 	return this->_path;
 }
 
-const std::map<long, ft::ServerConfig> ft::Config::servers() const{
+const std::map<long, ServerConfig> Config::servers() const
+{
 	return this->_servers;
 }
 
+std::set<int> Config::get_all_webserver_ports() const
+{
+	return this->_all_webserver_ports;
+}
+
 #pragma endregion Getters
+
+}
