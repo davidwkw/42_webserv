@@ -1,6 +1,8 @@
-#include "BaseConfig.hpp"
+#include "Config.hpp"
 
-const char *ft::BaseConfig::all_directives_array[] = {
+
+
+const char *ft::Config::all_directives_array[] = {
 											"error_log",
 											"server_name",
 											"listen",
@@ -18,7 +20,7 @@ const char *ft::BaseConfig::all_directives_array[] = {
 											"client_max_body_size"
 											};
 									
-const char *ft::BaseConfig::normal_directives_array[] = {
+const char *ft::Config::normal_directives_array[] = {
 													"index",
 													"error_page",
 													"return",
@@ -33,7 +35,7 @@ const char *ft::BaseConfig::normal_directives_array[] = {
 													"client_max_body_size"
 													};
 
-const char *ft::BaseConfig::array_directives_array[] =	{
+const char *ft::Config::array_directives_array[] =	{
 													"error_log",
 													"server_name",
 													"listen",
@@ -41,23 +43,23 @@ const char *ft::BaseConfig::array_directives_array[] =	{
 													"deny"
 													};
 
-const char *ft::BaseConfig::block_directives_array[] =	{
+const char *ft::Config::block_directives_array[] =	{
 													"server",
 													"location",
 													"limit_except"
 													};
 
-const std::set<std::string> ft::BaseConfig::all_directives_set = init_string_set(ft::BaseConfig::all_directives_array);
+const std::set<std::string> ft::Config::all_directives_set = init_string_set(ft::Config::all_directives_array);
 
-const std::set<std::string> ft::BaseConfig::all_directives_set = init_string_set(ft::BaseConfig::normal_directives_array);
+const std::set<std::string> ft::Config::all_directives_set = init_string_set(ft::Config::normal_directives_array);
 
-const std::set<std::string> ft::BaseConfig::array_directives_set = init_string_set(ft::BaseConfig::array_directives_array);
+const std::set<std::string> ft::Config::array_directives_set = init_string_set(ft::Config::array_directives_array);
 
-const std::set<std::string> ft::BaseConfig::block_directives_set = init_string_set(ft::BaseConfig::block_directives_array);
+const std::set<std::string> ft::Config::block_directives_set = init_string_set(ft::Config::block_directives_array);
 
-const std::map<std::string, std::string> ft::BaseConfig::directive_defaults = ft::BaseConfig::_init_directive_defaults();
+const std::map<std::string, std::string> ft::Config::directive_defaults = ft::Config::_init_directive_defaults();
 
-std::map<std::string, std::string> ft::BaseConfig::_init_directive_defaults(){
+std::map<std::string, std::string> ft::Config::_init_directive_defaults(){
 	typedef std::pair<std::string, std::string> directive_default_pair;
 	
 	const directive_default_pair directives_default_pairs[]	=	{
@@ -81,29 +83,29 @@ std::map<std::string, std::string> ft::BaseConfig::_init_directive_defaults(){
 	return fill_map;
 }
 
-ft::BaseConfig::BaseConfig() : _directives(){
-	_fill_directive_defaults(this->_directives, BaseConfig::all_directives_set);
+ft::Config::Config() : _directives(){
+	_fill_directive_defaults(this->_directives, Config::all_directives_set);
 }
 
-ft::BaseConfig::~BaseConfig(){}
+ft::Config::~Config(){}
 
-ft::BaseConfig::BaseConfig(const BaseConfig &ref) : _directives(ref._directives){
+ft::Config::Config(const Config &ref) : _directives(ref._directives){
 	*this = ref;
 }
 
-ft::BaseConfig &ft::BaseConfig::operator=(const BaseConfig &ref){
+ft::Config &ft::Config::operator=(const Config &ref){
 	if (this != &ref){
 		this->_directives = ref._directives;
 	}
 	return *this;
 }
 
-ft::BaseConfig::BaseConfig(const directive_container_type &directives) : _directives(){
+ft::Config::Config(const directive_container_type &directives) : _directives(){
 	this->_directives = directives;
-	_fill_directive_defaults(this->_directives, BaseConfig::all_directives_set);
+	_fill_directive_defaults(this->_directives, Config::all_directives_set);
 }
 
-ft::BaseConfig::BaseConfig(const directive_container_type &directives, allowed_directives_container_type inclusion_set) : _directives() {
+ft::Config::Config(const directive_container_type &directives, allowed_directives_container_type inclusion_set) : _directives() {
 	
 	directive_container_type::const_iterator cit;
 	directive_type temp;
@@ -117,15 +119,15 @@ ft::BaseConfig::BaseConfig(const directive_container_type &directives, allowed_d
 	_fill_directive_defaults(this->_directives, inclusion_set);
 }
 
-ft::BaseConfig::directive_container_type ft::BaseConfig::directives() const{
+ft::Config::directive_container_type ft::Config::directives() const{
 	return this->_directives;
 }
 
-void ft::BaseConfig::add_directive(directive_type directive){
+void ft::Config::add_directive(directive_type directive){
 	this->_directives.insert(directive);
 }
 
-ft::BaseConfig::directive_type ft::BaseConfig::parse_directive(const std::string &directive){
+ft::Config::directive_type ft::Config::parse_directive(const std::string &directive){
 	std::stringstream 				temp;
 	std::string 					word;
 	std::string 					k;
@@ -140,35 +142,35 @@ ft::BaseConfig::directive_type ft::BaseConfig::parse_directive(const std::string
 	return directive_type(k, v);
 }
 
-ft::BaseConfig::directive_container_type ft::BaseConfig::parse_all_directives(const std::string &str, const allowed_directives_container_type &inclusion_set = ft::BaseConfig::all_directives_set){
-	BaseConfig::directive_container_type container;
+ft::Config::directive_container_type ft::Config::parse_all_directives(const std::string &str, const allowed_directives_container_type &inclusion_set = ft::Config::all_directives_set){
+	Config::directive_container_type container;
 	std::size_t start_index = 0;
 	std::size_t delimiter_index = start_index;
 	std::string captured_directive;
-	BaseConfig::directive_type directive_pair;
+	Config::directive_type directive_pair;
 
   	while ((delimiter_index = str.find_first_of(";{}", delimiter_index)) != std::string::npos)
 	{
 		captured_directive = str.substr(start_index, delimiter_index - start_index);
 		if (str[delimiter_index] == ';'){
-			directive_pair = BaseConfig::parse_directive(trim_str(captured_directive, " \n\t"));
+			directive_pair = Config::parse_directive(trim_str(captured_directive, " \n\t"));
 		}
 		else if (str[delimiter_index] == '{')
 		{
 			captured_directive = str_char_limit_span(str.c_str() + delimiter_index, '{', '}');
 			if (captured_directive.empty() == true)
-				throw std::runtime_error("[BaseConfig] Missing } found in configuration file");
+				throw std::runtime_error("[Config] Missing } found in configuration file");
 			delimiter_index += captured_directive.length() + 2;
 			continue;
 		}
 		else
-			throw std::runtime_error("[BaseConfig] Found } without { in configuration file");
+			throw std::runtime_error("[Config] Found } without { in configuration file");
 		if (inclusion_set.find(directive_pair.first) == inclusion_set.end())
-			throw std::runtime_error("[BaseConfig] Invalid directive " + directive_pair.first);
-		if (BaseConfig::normal_directives_set.find(directive_pair.first) != BaseConfig::normal_directives_set.end()
+			throw std::runtime_error("[Config] Invalid directive " + directive_pair.first);
+		if (Config::normal_directives_set.find(directive_pair.first) != Config::normal_directives_set.end()
 			&& this->_directives.find(directive_pair.first) != this->_directives.end())
-			throw std::runtime_error("[BaseConfig] " + directive_pair.first + " directive already set");
-		else if (BaseConfig::array_directives_set.find(directive_pair.first) != BaseConfig::array_directives_set.end()
+			throw std::runtime_error("[Config] " + directive_pair.first + " directive already set");
+		else if (Config::array_directives_set.find(directive_pair.first) != Config::array_directives_set.end()
 			&& this->_directives.find(directive_pair.first) != this->_directives.end())
 			this->_directives[directive_pair.first] += ';' + directive_pair.second;
 		else
@@ -179,8 +181,8 @@ ft::BaseConfig::directive_container_type ft::BaseConfig::parse_all_directives(co
 	return container;
 }
 
-void ft::BaseConfig::_fill_directive_defaults(directive_container_type &directive_ref, const allowed_directives_container_type &inclusion_set, const directive_container_type &defaults_map = ft::BaseConfig::directive_defaults){
-	BaseConfig::directive_container_type::const_iterator dit;
+void ft::Config::_fill_directive_defaults(directive_container_type &directive_ref, const allowed_directives_container_type &inclusion_set, const directive_container_type &defaults_map = ft::Config::directive_defaults){
+	Config::directive_container_type::const_iterator dit;
 
 	for (allowed_directives_container_type::const_iterator cit = inclusion_set.begin(); cit != inclusion_set.end(); ++cit){
 		dit = defaults_map.find(*cit);
@@ -189,7 +191,7 @@ void ft::BaseConfig::_fill_directive_defaults(directive_container_type &directiv
 	}
 }
 
-std::map<std::string, std::string> ft::BaseConfig::parse_block_directives(const std::string &str){
+std::map<std::string, std::string> ft::Config::parse_block_directives(const std::string &str){
 	std::map<std::string, std::string> return_map;
 	std::pair<std::string, std::string> directive_pair;
 	std::size_t start_index = 0;
@@ -208,7 +210,7 @@ std::map<std::string, std::string> ft::BaseConfig::parse_block_directives(const 
 	return return_map;
 }
 
-const std::vector<std::string> ft::BaseConfig::find_normal_directive(const std::string &directive_key) const {
+const std::vector<std::string> ft::Config::find_normal_directive(const std::string &directive_key) const {
 	directive_container_type::const_iterator cit;
 	std::vector<std::string> ret_vector;
 
@@ -218,7 +220,7 @@ const std::vector<std::string> ft::BaseConfig::find_normal_directive(const std::
 	return ret_vector;
 }
 
-const std::vector<std::vector<std::string > > ft::BaseConfig::find_array_directive(const std::string &directive_key) const{
+const std::vector<std::vector<std::string > > ft::Config::find_array_directive(const std::string &directive_key) const{
 	directive_container_type::const_iterator cit;
 	std::vector<std::vector<std::string> > ret_vector;
 

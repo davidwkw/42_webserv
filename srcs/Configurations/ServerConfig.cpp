@@ -49,7 +49,7 @@ const std::set<std::string> ServerConfig::array_directives_set = init_string_set
 
 const std::set<std::string> ServerConfig::block_directives_set = init_string_set(ServerConfig::block_directives_array);
 
-ServerConfig::ServerConfig(void) : BaseConfig(), _locations(){}
+ServerConfig::ServerConfig(void) : Config(), _locations(){}
 
 ServerConfig::~ServerConfig(void){}
 
@@ -66,8 +66,8 @@ ServerConfig &ServerConfig::operator=(const ServerConfig &ref){
 	return *this;
 }
 
-ServerConfig::ServerConfig(BaseConfig::directive_container_type directives, const std::string &server_str) : BaseConfig(directives, ServerConfig::all_directives_set) {
-	this->_directives = BaseConfig::parse_all_directives(server_str, ServerConfig::all_directives_set);
+ServerConfig::ServerConfig(Config::directive_container_type directives, const std::string &server_str) : Config(directives, ServerConfig::all_directives_set) {
+	this->_directives = Config::parse_all_directives(server_str, ServerConfig::all_directives_set);
 	this->_parse_location_conf(server_str);
 }
 
@@ -76,7 +76,7 @@ void 	ServerConfig::_parse_location_conf(const std::string &cached_string){
 	std::vector<std::string> identifier_tokens;
 	std::pair<std::string, LocationConfig> block_pair;
 
-	block_directives = BaseConfig::parse_block_directives(cached_string);
+	block_directives = Config::parse_block_directives(cached_string);
 	for (std::map<std::string, std::string>::iterator it = block_directives.begin(); it != block_directives.end(); ++it){
 		identifier_tokens = tokenise_str(it->first);
 		if (identifier_tokens.size() != 2)

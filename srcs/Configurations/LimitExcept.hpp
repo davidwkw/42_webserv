@@ -3,13 +3,13 @@
 
 #include <string>
 #include <vector>
-#include "BaseConfig.hpp"
+#include "Config.hpp"
 #include "../utils/utils.hpp"
 
 namespace ft
 {	
 
-class LimitExcept : public BaseConfig{
+class LimitExcept : public Config{
 	private:
 		static const char 								*all_directives_array[];
 		static const char 								*normal_directives_array[];
@@ -23,7 +23,7 @@ class LimitExcept : public BaseConfig{
 	public:	
 		LimitExcept();
 		~LimitExcept();
-		LimitExcept(BaseConfig::directive_container_type directives, const std::string &str);
+		LimitExcept(Config::directive_container_type directives, const std::string &str);
 		LimitExcept(const LimitExcept &ref);
 		LimitExcept &operator=(const LimitExcept &ref);
 

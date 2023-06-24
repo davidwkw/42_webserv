@@ -41,7 +41,7 @@ const std::set<std::string> LocationConfig::array_directives_set = init_string_s
 
 const std::set<std::string> LocationConfig::block_directives_set = init_string_set(LocationConfig::block_directives_array);
 
-LocationConfig::LocationConfig(void) : BaseConfig() {}
+LocationConfig::LocationConfig(void) : Config() {}
 
 LocationConfig::~LocationConfig(void){}
 
@@ -57,8 +57,8 @@ LocationConfig &LocationConfig::operator=(const LocationConfig &ref){
 	return *this;
 }
 
-LocationConfig::LocationConfig(BaseConfig::directive_container_type directives, const std::string &location_str) : BaseConfig(directives, LocationConfig::all_directives_set) {
-	this->_directives = BaseConfig::parse_all_directives(location_str, LocationConfig::all_directives_set);
+LocationConfig::LocationConfig(Config::directive_container_type directives, const std::string &location_str) : Config(directives, LocationConfig::all_directives_set) {
+	this->_directives = Config::parse_all_directives(location_str, LocationConfig::all_directives_set);
 }
 
 void LocationConfig::_parse_limit_except(const std::string &cached_string){

@@ -60,7 +60,7 @@ WebserverConfig::WebserverConfig(const std::string &filename) : _path(filename){
 	this->_cache_stream(conf_stream, ss);
 	conf_stream.close();
 	raw = this->_parse_readable_lines(ss);
-	this->_directives = BaseConfig::parse_all_directives(raw, WebserverConfig::all_directives_set);
+	this->_directives = Config::parse_all_directives(raw, WebserverConfig::all_directives_set);
 	this->_parse_server_conf(raw);
 }
 
@@ -97,7 +97,7 @@ void WebserverConfig::_parse_server_conf(const std::string &conf_str){
 	std::map<std::string, std::string> block_directives;
 	std::pair<long, ServerConfig> block_pair;
 
-	block_directives = BaseConfig::parse_block_directives(conf_str);
+	block_directives = Config::parse_block_directives(conf_str);
 	for (directive_container_type::iterator it = block_directives.begin(); it != block_directives.end(); ++it){
 		if (it->first == "server"){
 			block_pair.first = this->_servers.size();

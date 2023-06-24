@@ -26,11 +26,11 @@ const std::set<std::string> LimitExcept::array_directives_set = init_string_set(
 
 const std::set<std::string> LimitExcept::block_directives_set = init_string_set(LimitExcept::block_directives_array);
 
-LimitExcept::LimitExcept() : BaseConfig(){}
+LimitExcept::LimitExcept() : Config(){}
 
 LimitExcept::~LimitExcept(){}
 
-LimitExcept::LimitExcept(const LimitExcept &ref) : BaseConfig(ref){
+LimitExcept::LimitExcept(const LimitExcept &ref) : Config(ref){
 	*this = ref;
 }
 
@@ -42,8 +42,8 @@ LimitExcept &LimitExcept::operator=(const LimitExcept &ref){
 	return *this;
 }
 
-LimitExcept::LimitExcept(BaseConfig::directive_container_type directives, const std::string &str) : BaseConfig(directives, LimitExcept::all_directives_set) {
-	this->_directives = BaseConfig::parse_all_directives(location_str, LimitExcept::all_directives_set);
+LimitExcept::LimitExcept(Config::directive_container_type directives, const std::string &str) : Config(directives, LimitExcept::all_directives_set) {
+	this->_directives = Config::parse_all_directives(location_str, LimitExcept::all_directives_set);
 }
 
 const std::vector<std::string> &LimitExcept::allow() const{

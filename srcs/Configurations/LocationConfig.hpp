@@ -6,12 +6,12 @@
 #include <set>
 #include <map>
 #include <utility>
-#include "BaseConfig.hpp"
+#include "Config.hpp"
 
 namespace ft
 {
 
-class LocationConfig : public BaseConfig{
+class LocationConfig : public Config{
 	private:
 		static const char					*all_directives_array[];
 		static const char 					*normal_directives_array[];
@@ -30,7 +30,7 @@ class LocationConfig : public BaseConfig{
 		~LocationConfig();
 		LocationConfig(const LocationConfig &ref);
 		LocationConfig &operator=(const LocationConfig &ref);
-		LocationConfig(BaseConfig::directive_container_type directives, const std::string &server_str);
+		LocationConfig(Config::directive_container_type directives, const std::string &server_str);
 
 		const std::vector<std::vector<std::string> > error_page() const;
 		const std::vector<std::string> index() const;

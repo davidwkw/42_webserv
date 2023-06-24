@@ -6,7 +6,7 @@
 #include <exception>
 #include <vector>
 #include <set>
-#include "BaseConfig.hpp"
+#include "Config.hpp"
 #include "ServerConfig.hpp"
 #include <webserv.hpp>
 #include <sstream>
@@ -15,7 +15,7 @@
 namespace ft
 {
 
-class WebserverConfig : public BaseConfig
+class WebserverConfig : public Config
 {
 	private:
 		std::string							_path;

@@ -11,7 +11,7 @@
 namespace ft
 {
 	
-class BaseConfig{
+class Config{
 	protected:
 	
 		typedef std::map<std::string, std::string>	directive_container_type;
@@ -28,7 +28,7 @@ class BaseConfig{
 		static const std::set<std::string>				block_directives_set;
 		static const directive_container_type			directive_defaults;
 		
-		void _fill_directive_defaults(directive_container_type &directive_ref, const allowed_directives_container_type &inclusion_set, const directive_container_type &defaults_map = BaseConfig::directive_defaults);
+		void _fill_directive_defaults(directive_container_type &directive_ref, const allowed_directives_container_type &inclusion_set, const directive_container_type &defaults_map = Config::directive_defaults);
 
 		const std::vector<std::string> find_normal_directive(const std::string &directive_key) const;
 		const std::vector<std::vector<std::string> > find_array_directive(const std::string &directive_key) const;
@@ -39,14 +39,14 @@ class BaseConfig{
 		static std::map<std::string, std::string> _init_directive_defaults();
 
 	public:
-		BaseConfig();
-		virtual ~BaseConfig();
-		BaseConfig(const BaseConfig &ref);
-		BaseConfig &operator=(const BaseConfig &ref);
-		BaseConfig(const directive_container_type &directives);
-		BaseConfig(const directive_container_type &directives, allowed_directives_container_type inclusion_set);
+		Config();
+		virtual ~Config();
+		Config(const Config &ref);
+		Config &operator=(const Config &ref);
+		Config(const directive_container_type &directives);
+		Config(const directive_container_type &directives, allowed_directives_container_type inclusion_set);
 		template <class Iterator>
-		BaseConfig(const directive_container_type &directives, Iterator first, Iterator last,
+		Config(const directive_container_type &directives, Iterator first, Iterator last,
 					typename enable_if<is_same<typename remove_const<typename Iterator::value_type>::type, std::string>::value ||
 								   is_same<typename remove_const<typename Iterator::value_type>::type, char*>::value>::type* = nullptr);
 		
@@ -55,13 +55,13 @@ class BaseConfig{
 		
 		static directive_type parse_directive(const std::string &directive);
 
-		directive_container_type parse_all_directives(const std::string &str, const allowed_directives_container_type &inclusion_set = BaseConfig::all_directives_set);
+		directive_container_type parse_all_directives(const std::string &str, const allowed_directives_container_type &inclusion_set = Config::all_directives_set);
 
 		std::map<std::string, std::string> parse_block_directives(const std::string &string);
 };
 
 template <class Iterator>
-BaseConfig::BaseConfig(const directive_container_type &directives, Iterator first, Iterator last, typename enable_if<is_same<typename remove_const<typename Iterator::value_type>::type, std::string>::value || is_same<typename remove_const<typename Iterator::value_type>::type, char*>::value>::type* = nullptr){
+Config::Config(const directive_container_type &directives, Iterator first, Iterator last, typename enable_if<is_same<typename remove_const<typename Iterator::value_type>::type, std::string>::value || is_same<typename remove_const<typename Iterator::value_type>::type, char*>::value>::type* = nullptr){
 	Iterator first_copy = first;
 	
 	this->_directives = directives;

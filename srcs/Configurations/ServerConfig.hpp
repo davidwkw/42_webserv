@@ -5,14 +5,14 @@
 #include <map>
 #include <sstream>
 #include "LocationConfig.hpp"
-#include "BaseConfig.hpp"
+#include "Config.hpp"
 #include "WebserverConfig.hpp"
 #include "webserv.hpp"
 
 namespace ft
 {
 
-class ServerConfig : public BaseConfig{
+class ServerConfig : public Config{
 	private:
 		std::map<std::string, LocationConfig> 	_locations;
 
@@ -33,7 +33,7 @@ class ServerConfig : public BaseConfig{
 		~ServerConfig();
 		ServerConfig(const ServerConfig &ref);
 		ServerConfig &operator=(const ServerConfig &ref);
-		ServerConfig(BaseConfig::directive_container_type directives, const std::string &server_str);
+		ServerConfig(Config::directive_container_type directives, const std::string &server_str);
 
 #pragma region Getters
 
