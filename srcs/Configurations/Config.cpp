@@ -103,6 +103,10 @@ void Config::_parse_server_conf(const std::string &conf_str){
 			block_pair.first = this->_servers.size();
 			block_pair.second = ServerConfig(this->_directives, it->second);
 			this->_servers.insert(block_pair);
+			for (std::vector<unsigned int>::const_iterator cit = block_pair.second.ports().begin(); cit != block_pair.second.ports().end(); cit++)
+			{
+				this->_all_webserver_ports.insert(*cit);
+			}
 		}
 		else
 			throw std::runtime_error("[Config] Invalid block directive for this context");
@@ -122,7 +126,7 @@ const std::map<long, ServerConfig> Config::servers() const
 	return this->_servers;
 }
 
-std::set<int> Config::get_all_webserver_ports() const
+std::set<unsigned int> Config::get_all_webserver_ports() const
 {
 	return this->_all_webserver_ports;
 }
