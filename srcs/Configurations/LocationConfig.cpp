@@ -1,5 +1,8 @@
 #include "LocationConfig.hpp"
 
+namespace ft
+{
+
 const char *LocationConfig::all_directives_array[] =	{
 														"error_log",
 														"index",
@@ -95,4 +98,6 @@ const std::vector<std::string> LocationConfig::index() const{
 
 const std::vector<std::string> LocationConfig::error_log() const{
 	return this->find_normal_directive("error_log");
+}
+
 }
