@@ -12,10 +12,19 @@ int	main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 	
-	ft::WebserverConfig		config((argc == 2) ? argv[1] : DEFAULT_CONFIG_PATH);
-	ft::WebServer	server(config);
+	ft::Logger			logger("webserver_log.txt");
+	ft::WebserverConfig	config((argc == 2) ? argv[1] : DEFAULT_CONFIG_PATH);
+	ft::WebServer		server(config);
 
-	server.run();
-
+	try
+	{
+		server.run();
+	}
+	catch(const std::runtime_error& run_error)
+	{
+		logger.error(run_error.what());
+		return EXIT_FAILURE;
+	}
+	
 	return EXIT_SUCCESS;
 }
