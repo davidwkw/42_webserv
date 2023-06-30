@@ -8,7 +8,7 @@
 #include <set>
 #include "Config.hpp"
 #include "ServerConfig.hpp"
-#include <webserv.hpp>
+#include "../../includes/webserv.hpp"
 #include <sstream>
 #include <stdexcept>
 
@@ -18,9 +18,9 @@ namespace ft
 class WebserverConfig : public Config
 {
 	private:
-		std::string							_path;
-		std::map<long, ServerConfig>		_servers;
-		std::set<unsigned int>						_all_webserver_ports;
+		std::string									_path;
+		std::map<long, ServerConfig>				_servers;
+		std::map<unsigned int, std::vector<long> >	_port_server_config_map;
 
 		static const char					*all_directives_array[];
 		static const char 					*normal_directives_array[];
@@ -44,9 +44,9 @@ class WebserverConfig : public Config
 		WebserverConfig &operator=(const WebserverConfig &ref);
 		WebserverConfig(const std::string &filename);
 
-		const std::string &path(void) const;
-		const std::map<long, ServerConfig> servers() const;
-		std::set<unsigned int> get_all_webserver_ports() const;
+		const std::string 							&path(void) const;
+		const std::map<long, ServerConfig>			servers() const;
+		std::map<unsigned int, std::vector<long> >	get_port_server_config_map() const;
 };
 
 }

@@ -1,6 +1,7 @@
 #ifndef WEBSERV_HPP
 #define WEBSERV_HPP
 
+#include <cstdlib>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <stdexcept>
@@ -20,7 +21,9 @@
 #define HTTP_VERSION "HTTP 1.1"
 #define DEFAULT_CONFIG_PATH "./configs/default.conf"
 #define CRLF "\r\n"
-#define BUFFER_SIZE 1024
+#define BUFFER_SIZE 8190
 #define TIMEOUT 1000*5
+#define BACKLOG 3
+#define MAX_CLIENTS BACKLOG*10
 
 #endif

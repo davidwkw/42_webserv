@@ -21,7 +21,7 @@ class Response
 		~Response();
 		operator std::string() const;
 
-		Response &status_code(int code);
+		Response	&status_code(int code);
 		std::string build_response();
 
 };

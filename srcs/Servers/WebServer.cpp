@@ -3,180 +3,146 @@
 namespace ft
 {
 
-WebServer::WebServer(){}
+#pragma region Constructors
 
-WebServer::WebServer(const WebserverConfig &config) : _webserver_config(config)
+// WebServer::WebServer(){}
+
+WebServer::WebServer(const WebserverConfig &config, char **envp) : _webserver_config(config), _max_fd(0), _envp(envp){}
+
+WebServer::~WebServer(){}
+
+#pragma endregion Constructors
+
+#pragma region OperatorOverloads
+
+#pragma endregion OperatorOverloads
+
+#pragma region ClassUtility
+
+void WebServer::_initialise_socket_fd()
 {
-    long index = 0;
-
-    for (std::map<long, ServerConfig>::const_iterator cit = config.servers().begin(); cit != config.servers().end(); cit++)
+    for(std::map<unsigned int, std::vector<long> >::const_iterator cit = this->_webserver_config.get_port_server_config_map().begin(); cit != this->_webserver_config.get_port_server_config_map().end(); cit++)
     {
-        const std::vector<unsigned int> ports = cit->second.ports();
+        std::vector<ServerConfig>   server_configs;
 
-        for (std::vector<unsigned int>::const_iterator cpit = ports.begin(); cpit != ports.end(); cpit++)
+        for (std::vector<long>::const_iterator cit2 = cit->second.begin(); cit2 != cit->second.end(); cit2++)
         {
-            this->_servers.insert(std::make_pair(index, HTTPServer(*cpit, 5)));
+            std::map<long, ServerConfig>    server_map; 
+            
+            server_map = this->_webserver_config.servers();
+            server_configs.push_back(server_map[*cit2]);
         }
-        index++;
+        this->_port_http_server_map.insert(std::make_pair(cit->first, HTTPServer(cit->first, BACKLOG, MAX_CLIENTS, BUFFER_SIZE, server_configs)));
     }
 }
 
-WebServer::~WebServer()
-{
-	freeaddrinfo(this->_servinfo);
+void WebServer::_reset_fd_sets()
+{ 
+    FD_ZERO(&this->_read_fds);  
+    FD_ZERO(&this->_write_fds);
 }
 
-WebServer::WebServer(const WebServer &ref) : _read_fds(ref._read_fds), _write_fds(ref._write_fds)
+void WebServer::_append_listen_sockets_to_readfd()
 {
-	*this = ref;
-}
-
-WebServer &WebServer::operator=(const WebServer &ref)
-{
-	if (this != &ref)
-	{
-        this->_read_fds = ref._read_fds;
-        this->_write_fds = ref._write_fds;
-	}
-	return *this;
-}
-
-
-void WebServer::run() const
-{
-    for(std::map<long, HTTPServer>::const_iterator cit = this->_servers.begin(); cit != this->_servers.end(); cit++)
+    for (std::map<unsigned int, HTTPServer>::iterator it = this->_port_http_server_map.begin(); it != this->_port_http_server_map.end(); it++)
     {
+        int socket_fd = it->second.get_listen_socket_fd();
 
+        FD_SET(socket_fd, &this->_read_fds);
+        if (socket_fd > this->_max_fd)
+            this->_max_fd = socket_fd;
     }
-    
+}
+
+void WebServer::_append_read_sockets_to_readfd()
+{
+    for (std::map<unsigned int, HTTPServer>::iterator it = this->_port_http_server_map.begin(); it != this->_port_http_server_map.end(); it++)
+    {
+        for (std::vector<int>::iterator it2 = it->second.get_client_read_fds().begin(); it2 != it->second.get_client_read_fds().end(); it2++)
+        {
+            if (*it2 > 0)
+                FD_SET(*it2, &this->_read_fds);
+            if (*it2 > this->_max_fd)
+                this->_max_fd = *it2;
+        }
+    }
+}
+
+void WebServer::_append_write_sockets_to_writefd()
+{
+    for (std::map<unsigned int, HTTPServer>::iterator it = this->_port_http_server_map.begin(); it != this->_port_http_server_map.end(); it++)
+    {
+        for (std::vector<int>::iterator it2 = it->second.get_client_write_fds().begin(); it2 != it->second.get_client_write_fds().end(); it2++)
+        {
+            if (*it2 > 0)
+                FD_SET(*it2, &this->_write_fds);
+            if (*it2 > this->_max_fd)
+                this->_max_fd = *it2;
+        }
+    }
+}
+
+void WebServer::_accept_incoming_connections()
+{
+    for (std::map<unsigned int, HTTPServer>::iterator it = this->_port_http_server_map.begin(); it != this->_port_http_server_map.end(); it++)
+    {
+        if (FD_ISSET(it->second.get_listen_socket_fd(), &this->_read_fds))
+            it->second.accept_connection();
+    }
+}
+
+void WebServer::_perform_socket_io()
+{
+    int status = 0;
+
+    for (std::map<unsigned int, HTTPServer>::iterator it = this->_port_http_server_map.begin(); it != this->_port_http_server_map.end(); it++)
+    {
+        for (std::vector<int>::iterator it2 = it->second.get_client_read_fds().begin(); it2 != it->second.get_client_read_fds().end(); it2++)
+        {
+            if (FD_ISSET(*it2, &this->_read_fds))
+            {
+                status = it->second.process_request(*it2);
+                if (status == -1)
+                {
+                    it->second.remove_fd(*it2);
+                    close(*it2);
+                    FD_CLR(*it2, &this->_read_fds);
+                }
+            }
+        }
+
+        for (std::vector<int>::iterator it2 = it->second.get_client_write_fds().begin(); it2 != it->second.get_client_write_fds().end(); it2++)
+        {
+            // if (FD_ISSET(*it2, &this->_write_fds))
+            //     it->second.send_response(*it2);
+        }
+    }
+}
+
+#pragma endregion ClassUtility
+
+void WebServer::run()
+{   
+    int activity = 0;
+
+    this->_initialise_socket_fd();
+
     while(true)  
     {  
-        //clear the socket set 
-        FD_ZERO(&this->_read_fds);  
-        FD_ZERO(&this->_write_fds);
-        //add master socket to set
-
-
-        FD_SET(master_socket, &this->_read_fds);  
-        max_sd = master_socket;  
-             
-        //add child sockets to set 
-        for ( i = 0 ; i < max_clients ; i++)  
+        this->_reset_fd_sets();
+        this->_append_listen_sockets_to_readfd();
+        this->_append_read_sockets_to_readfd();
+        this->_append_write_sockets_to_writefd();
+        // listen to SIGCHLD, CGI
+        // signal(SIGCHLD, handle_sigchld);
+        activity = select(this->_max_fd + 1 , &this->_read_fds , &this->_write_fds , NULL , NULL);
+        if ((activity < 0) && (errno != EINTR))  
         {  
-            //socket descriptor 
-            sd = client_socket[i];  
-                 
-            //if valid socket descriptor then add to read list 
-            if(sd > 0)  
-                FD_SET( sd , &this->_read_fds);  
-                 
-            //highest file descriptor number, need it for the select function 
-            if(sd > max_sd)  
-                max_sd = sd;  
-        }  
-     
-        //wait for an activity on one of the sockets , timeout is NULL , 
-        //so wait indefinitely 
-        activity = select( max_sd + 1 , &this->_read_fds , NULL , NULL , NULL);  
-       
-        if ((activity < 0) && (errno!=EINTR))  
-        {  
-            printf("select error");  
-        }  
-             
-        //If something happened on the master socket , 
-        //then its an incoming connection 
-        if (FD_ISSET(master_socket, &this->_read_fds))  
-        {  
-            if ((new_socket = accept(master_socket, 
-                    (struct sockaddr *)&address, (socklen_t*)&addrlen))<0)  
-            {  
-                perror("accept");  
-                exit(EXIT_FAILURE);  
-            }  
-             
-            //inform user of socket number - used in send and receive commands 
-            printf("New connection , socket fd is %d , ip is : %s , port : %d 
-                  \n" , new_socket , inet_ntoa(address.sin_addr) , ntohs
-                  (address.sin_port));  
-           
-            //send new connection greeting message 
-            if( send(new_socket, message, strlen(message), 0) != strlen(message) )  
-            {  
-                perror("send");  
-            }  
-                 
-            puts("Welcome message sent successfully");  
-                 
-            //add new socket to array of sockets 
-            for (i = 0; i < max_clients; i++)  
-            {  
-                //if position is empty 
-                if( client_socket[i] == 0 )  
-                {  
-                    client_socket[i] = new_socket;  
-                    printf("Adding to list of sockets as %d\n" , i);  
-                         
-                    break;  
-                }  
-            }  
-        }  
-             
-        //else its some IO operation on some other socket
-        for (i = 0; i < max_clients; i++)  
-        {  
-            sd = client_socket[i];  
-                 
-            if (FD_ISSET( sd , &readfds))  
-            {  
-                //Check if it was for closing , and also read the 
-                //incoming message 
-                if ((valread = read( sd , buffer, 1024)) == 0)  
-                {  
-                    //Somebody disconnected , get his details and print 
-                    getpeername(sd , (struct sockaddr*)&address , \
-                        (socklen_t*)&addrlen);  
-                    printf("Host disconnected , ip %s , port %d \n" , 
-                          inet_ntoa(address.sin_addr) , ntohs(address.sin_port));  
-                         
-                    //Close the socket and mark as 0 in list for reuse 
-                    close( sd );  
-                    client_socket[i] = 0;  
-                }  
-                     
-                //Echo back the message that came in 
-                else 
-                {  
-                    //set the string terminating NULL byte on the end 
-                    //of the data read 
-                    buffer[valread] = '\0';  
-                    send(sd , buffer , strlen(buffer) , 0 );  
-                }  
-            }  
-        }  
+            throw std::runtime_error("Select error");
+        }
+        this->_accept_incoming_connections();
+        this->_perform_socket_io();
     }  
-
-	// for (p = this->_servinfo; p != NULL; p = p->ai_next){
-    //     if ((this->_sock_fd = socket(p->ai_family, p->ai_socktype,
-    //             p->ai_protocol)) == -1) {
-    //         perror("server: socket");
-    //         continue;
-    //     }
-
-    //     if (setsockopt(this->_sock_fd, SOL_SOCKET, SO_REUSEADDR, &yes,
-    //             sizeof(int)) == -1) {
-    //         perror("setsockopt");
-    //         exit(1);
-    //     }
-
-    //     if (bind(this->_sock_fd, p->ai_addr, p->ai_addrlen) == -1) {
-    //         close(this->_sock_fd);
-    //         perror("server: bind");
-    //         continue;
-    //     }
-
-    //     break;
-	// }
 }
 
 }

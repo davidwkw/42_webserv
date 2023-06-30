@@ -120,7 +120,7 @@ void WebserverConfig::_parse_server_conf(const std::string &conf_str){
 			this->_servers.insert(block_pair);
 			for (std::vector<unsigned int>::const_iterator cit = block_pair.second.ports().begin(); cit != block_pair.second.ports().end(); cit++)
 			{
-				this->_all_webserver_ports.insert(*cit);
+				this->_port_server_config_map[*cit].push_back(block_pair.first);
 			}
 		}
 		else
@@ -143,9 +143,9 @@ const std::map<long, ServerConfig> WebserverConfig::servers() const
 	return this->_servers;
 }
 
-std::set<unsigned int> WebserverConfig::get_all_webserver_ports() const
+std::map<unsigned int, std::vector<long> > WebserverConfig::get_port_server_config_map() const
 {
-	return this->_all_webserver_ports;
+	return this->_port_server_config_map;
 }
 
 #pragma endregion Getters

@@ -92,56 +92,74 @@ void 	ServerConfig::_parse_location_conf(const std::string &cached_string){
 	}
 }
 
-const std::vector<std::string> ServerConfig::server_names() const{
-	std::vector<std::vector<std::string> > temp;
-	std::vector<std::string> ret_vector;
+#pragma region Getters
+
+const std::map<std::string, LocationConfig>	ServerConfig::locations() const
+{
+	return this->_locations;
+}
+
+const std::set<std::string> ServerConfig::server_names() const
+{
+	std::vector<std::vector<std::string> >	temp;
+	std::set<std::string>				ret_set;
 	
 	temp = this->find_array_directive("server_name");
 	for (std::vector<std::vector<std::string> >::iterator it = temp.begin(); it != temp.end(); ++it){
 		for (std::vector<std::string>::iterator it2 = it->begin(); it2 != it->end(); ++it2){
-			ret_vector.push_back(*it2);
+			ret_set.insert(*it2);
 		}
 	}
-	return ret_vector;
+	return ret_set;
 }
 
-const std::vector<std::vector<std::string> > ServerConfig::error_page() const{
+const std::vector<std::vector<std::string> > ServerConfig::error_page() const
+{
 	return this->find_array_directive("error_page");
 }
 
-const std::vector<std::string> ServerConfig::client_body_temp_path() const{
-	return this->find_normal_directive("client_body_temp_path");
+const std::string ServerConfig::client_body_temp_path() const
+{
+	return this->find_normal_directive("client_body_temp_path").front();
 }
 
-const std::string ServerConfig::root() const{
+const std::string ServerConfig::root() const
+{
 	return this->find_normal_directive("root").back();
 }
 
-const std::vector<std::string> ServerConfig::try_files() const{
+const std::vector<std::string> ServerConfig::try_files() const
+{
 	return this->find_normal_directive("try_files");
 }
 
-const std::vector<std::vector<std::string> > ServerConfig::listen() const{
+const std::vector<std::vector<std::string> > ServerConfig::listen() const
+{
 	return this->find_array_directive("listen");
 }
 
-const std::vector<std::string> ServerConfig::client_max_body_size() const{
+const std::vector<std::string> ServerConfig::client_max_body_size() const
+{
 	return this->find_normal_directive("client_max_body_size");
 }
 
-const std::vector<std::string> ServerConfig::autoindex() const{
-	return this->find_normal_directive("autoindex");
+const std::string ServerConfig::autoindex() const
+{
+	return this->find_normal_directive("autoindex").front();
 }
 
-const std::vector<std::string> ServerConfig::index() const{
+const std::vector<std::string> ServerConfig::index() const
+{
 	return this->find_normal_directive("index");
 }
 
-const std::vector<std::string> ServerConfig::error_log() const{
+const std::vector<std::string> ServerConfig::error_log() const
+{
 	return this->find_normal_directive("error_log");
 }
 
-const std::vector<unsigned int> ServerConfig::ports() const{
+const std::vector<unsigned int> ServerConfig::ports() const
+{
 	std::vector<unsigned int> ret_vector;
 
 	for (std::vector<std::vector<std::string> >::const_iterator cit = this->listen().begin(); cit != this->listen().end(); cit++)
@@ -150,5 +168,7 @@ const std::vector<unsigned int> ServerConfig::ports() const{
 	}
 	return ret_vector;
 }
+
+#pragma endregion Getters
 
 }

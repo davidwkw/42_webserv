@@ -7,7 +7,7 @@
 #include "LocationConfig.hpp"
 #include "Config.hpp"
 #include "WebserverConfig.hpp"
-#include "webserv.hpp"
+#include "../../includes/webserv.hpp"
 
 namespace ft
 {
@@ -37,19 +37,19 @@ class ServerConfig : public Config{
 
 #pragma region Getters
 
-		const std::map<std::string, LocationConfig> &locations() const;
-		const std::vector<std::string> server_names() const;
-		const std::vector<std::vector<std::string> > listen() const;
-		const std::vector<std::vector<std::string> > error_page() const;
-		const std::vector<std::string> index() const;
-		const std::vector<std::string> client_body_temp_path() const;
-		const std::vector<std::string> try_files() const;
-		const std::vector<std::string> client_max_body_size() const;
-		const std::vector<std::string> autoindex() const;
-		const std::vector<std::string> index() const;
-		const std::vector<std::string> error_log() const;
-		const std::string root() const;
-		const std::vector<unsigned int> ports() const;
+		const std::vector<std::vector<std::string> >	error_page() const;
+		const std::vector<std::vector<std::string> >	listen() const;
+		const std::map<std::string, LocationConfig>		locations() const;
+		const std::set<std::string> 					server_names() const;
+		const std::vector<std::string> 					index() const;
+		const std::vector<std::string> 					try_files() const;
+		const std::vector<std::string> 					client_max_body_size() const;
+		const std::vector<std::string> 					index() const;
+		const std::vector<std::string> 					error_log() const;
+		const std::string 								client_body_temp_path() const;
+		const std::string			 					autoindex() const;
+		const std::string								root() const;
+		const std::vector<unsigned int>					ports() const;
 
 #pragma endregion Getters
 };

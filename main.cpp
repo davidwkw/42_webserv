@@ -4,7 +4,7 @@
 #include <arpa/inet.h>
 #include "../includes/webserv.hpp"
 
-int	main(int argc, char **argv)
+int	main(int argc, char **argv, char **envp)
 {
 	if (argc > 2)
 	{
@@ -14,7 +14,7 @@ int	main(int argc, char **argv)
 	
 	ft::Logger			logger("webserver_log.txt");
 	ft::WebserverConfig	config((argc == 2) ? argv[1] : DEFAULT_CONFIG_PATH);
-	ft::WebServer		server(config);
+	ft::WebServer		server(config, envp);
 
 	try
 	{
