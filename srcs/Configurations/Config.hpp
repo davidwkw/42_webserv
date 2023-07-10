@@ -30,8 +30,8 @@ class Config{
 		
 		void _fill_directive_defaults(directive_container_type &directive_ref, const allowed_directives_container_type &inclusion_set, const directive_container_type &defaults_map = Config::directive_defaults);
 
-		const std::vector<std::string> find_normal_directive(const std::string &directive_key) const;
-		const std::vector<std::vector<std::string> > find_array_directive(const std::string &directive_key) const;
+		const std::vector<std::string>					find_normal_directive(const std::string &directive_key) const;
+		const std::vector<std::vector<std::string> >	find_array_directive(const std::string &directive_key) const;
 
 		directive_container_type _directives;
 

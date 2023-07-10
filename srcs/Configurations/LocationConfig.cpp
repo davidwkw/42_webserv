@@ -110,7 +110,7 @@ const std::string LocationConfig::root() const
 	std::vector<std::string> temp_vect = this->find_normal_directive("root");
 	if (temp_vect.size() != 0)
 		return temp_vect.front();
-	return "";
+	return "public";
 }
 
 const std::string LocationConfig::autoindex() const
@@ -120,6 +120,5 @@ const std::string LocationConfig::autoindex() const
 		return temp_vect.front();
 	return "";
 }
-
 
 }

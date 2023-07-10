@@ -12,7 +12,8 @@
 namespace ft
 {
 
-class ServerConfig : public Config{
+class ServerConfig : public Config
+{
 	private:
 		std::map<std::string, LocationConfig> 	_locations;
 

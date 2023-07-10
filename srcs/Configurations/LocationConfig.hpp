@@ -11,7 +11,8 @@
 namespace ft
 {
 
-class LocationConfig : public Config{
+class LocationConfig : public Config
+{
 	private:
 		static const char					*all_directives_array[];
 		static const char 					*normal_directives_array[];

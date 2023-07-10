@@ -102,7 +102,7 @@ const std::map<std::string, LocationConfig>	ServerConfig::locations() const
 const std::set<std::string> ServerConfig::server_names() const
 {
 	std::vector<std::vector<std::string> >	temp;
-	std::set<std::string>				ret_set;
+	std::set<std::string>					ret_set;
 	
 	temp = this->find_array_directive("server_name");
 	for (std::vector<std::vector<std::string> >::iterator it = temp.begin(); it != temp.end(); ++it){
