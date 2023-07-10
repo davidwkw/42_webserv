@@ -38,13 +38,13 @@ class WebserverConfig : public Config
 		void 		_parse_server_conf(const std::string &cached_string);
 
 	public:
-		WebserverConfig(void);
-		~WebserverConfig(void);
+		WebserverConfig();
+		~WebserverConfig();
 		WebserverConfig(const WebserverConfig &ref);
 		WebserverConfig &operator=(const WebserverConfig &ref);
 		WebserverConfig(const std::string &filename);
 
-		const std::string 							&path(void) const;
+		const std::string 							&path() const;
 		const std::map<long, ServerConfig>			servers() const;
 		std::map<unsigned int, std::vector<long> >	get_port_server_config_map() const;
 };

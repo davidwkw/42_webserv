@@ -24,6 +24,7 @@ unsigned long hex_str_to_ulong(const std::string &hex_str);
 bool getline_CRLF(std::istream& input, std::string& line);
 std::string url_decode(const std::string &encoded_url);
 std::string string_vector_to_string(const std::vector<std::string> &vect);
+std::string prune_http_protocol(const std::string &domain_str);
 
 template<bool Cond, class T = void>
 struct enable_if {};

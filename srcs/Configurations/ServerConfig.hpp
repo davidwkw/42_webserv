@@ -46,10 +46,10 @@ class ServerConfig : public Config{
 		const std::vector<std::string> 					client_max_body_size() const;
 		const std::vector<std::string> 					index() const;
 		const std::vector<std::string> 					error_log() const;
+		const std::vector<unsigned int>					ports() const;
 		const std::string 								client_body_temp_path() const;
 		const std::string			 					autoindex() const;
 		const std::string								root() const;
-		const std::vector<unsigned int>					ports() const;
 
 #pragma endregion Getters
 };

@@ -4,26 +4,26 @@ namespace ft
 {
 
 const char *Config::all_directives_array[] = {
-											"error_log",
-											"server_name",
-											"listen",
-											"index",
-											"error_page",
-											"return",
-											"cgi",
-											"user",
-											"pid",
-											"worker_processes",
-											"autoindex",
-											"root",
-											"client_body_temp_path",
-											"try_files",
-											"client_max_body_size"
+												"error_log",
+												"server_name",
+												"listen",
+												"index",
+												"error_page",
+												"return",
+												"cgi",
+												"user",
+												"pid",
+												"worker_processes",
+												"autoindex",
+												"root",
+												"client_body_temp_path",
+												"try_files",
+												"client_max_body_size",
+												"limit_except"
 											};
 									
 const char *Config::normal_directives_array[] = {
 													"index",
-													"error_page",
 													"return",
 													"cgi",
 													"user",
@@ -33,22 +33,23 @@ const char *Config::normal_directives_array[] = {
 													"root",
 													"client_body_temp_path",
 													"try_files",
-													"client_max_body_size"
-													};
+													"client_max_body_size",
+													"limit_except"
+												};
 
 const char *Config::array_directives_array[] =	{
+													"error_page",
 													"error_log",
 													"server_name",
 													"listen",
 													"allow",
 													"deny"
-													};
+												};
 
 const char *Config::block_directives_array[] =	{
 													"server",
 													"location",
-													"limit_except"
-													};
+												};
 
 const std::set<std::string> Config::all_directives_set = init_string_set(Config::all_directives_array);
 
@@ -72,9 +73,10 @@ std::map<std::string, std::string> Config::_init_directive_defaults(){
 												directive_default_pair("pid", "logs/nginx.pid"),
 												directive_default_pair("worker_processes", "1"),
 												directive_default_pair("autoindex", "off"),
-												directive_default_pair("root", "html"),
+												directive_default_pair("root", "public"),
 												directive_default_pair("client_body_temp_path", "client_body_temp"),
-												directive_default_pair("client_max_body_size", "1m")
+												directive_default_pair("client_max_body_size", "1m"),
+												directive_default_pair("limit_except", "GET POST DELETE")
 												};
 
 	std::map<std::string, std::string> fill_map;

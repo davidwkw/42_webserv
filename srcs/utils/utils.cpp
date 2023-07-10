@@ -148,9 +148,11 @@ std::string url_decode(const std::string &encoded_url)
                 decodedUrl += '%';
                 decodedUrl += hexDigits;
             }
-        } else {
+        } 
+		else if (ch == '+')
+			decodedUrl += ' ';
+		else
             decodedUrl += ch;
-        }
     }
     return decodedUrl;
 }
@@ -163,4 +165,13 @@ std::string string_vector_to_string(const std::vector<std::string> &vect, char d
         ss << *cit << delimiter;
     }
     return ss.str();
+}
+
+std::string prune_http_protocol(const std::string &domain_str)
+{
+	if (domain_str.find("https:\\\\") == std::string::npos)
+		return domain_str;
+	else if (domain_str.find("http:\\\\") == std::string::npos)
+		return domain_str;
+	return domain_str.substr(domain_str.find_last_of('\\'), 7);
 }

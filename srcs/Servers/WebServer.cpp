@@ -100,21 +100,13 @@ void WebServer::_perform_socket_io()
         for (std::vector<int>::iterator it2 = it->second.get_client_read_fds().begin(); it2 != it->second.get_client_read_fds().end(); it2++)
         {
             if (FD_ISSET(*it2, &this->_read_fds))
-            {
-                status = it->second.process_request(*it2);
-                if (status == -1)
-                {
-                    it->second.remove_fd(*it2);
-                    close(*it2);
-                    FD_CLR(*it2, &this->_read_fds);
-                }
-            }
+                it->second.handle_request(*it2);
         }
 
         for (std::vector<int>::iterator it2 = it->second.get_client_write_fds().begin(); it2 != it->second.get_client_write_fds().end(); it2++)
         {
-            // if (FD_ISSET(*it2, &this->_write_fds))
-            //     it->second.send_response(*it2);
+            if (FD_ISSET(*it2, &this->_write_fds))
+                it->second.handle_response(*it2);
         }
     }
 }

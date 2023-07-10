@@ -10,21 +10,23 @@ namespace ft {
 class HTTPServer : public Server 
 {
 	private:
+		std::map<int, Client>			_fd_to_client_map;
 		std::vector<ServerConfig>		_server_configs;
 		std::vector<int>				_client_read_fds;
 		std::vector<int>				_client_write_fds;
-		std::map<int, Request>			_fd_to_request_map;
-		std::map<int, Response>			_fd_to_response_map;
 		unsigned int 					_port;
 		unsigned int 					_max_clients;
 		unsigned int 					_buffer_size;
+
+		void _assign_config_to_client(const int &fd);
 
 	public:
 		HTTPServer(unsigned int port, int backlog, unsigned int max_clients, unsigned int buffer_size, std::vector<ServerConfig> server_configs);
 		virtual ~HTTPServer();
 
 		void				accept_connection();
-		int					process_request(const int &fd);
+		void				handle_request(const int &fd);
+		void				handle_response(const int &fd);
 
 		int					get_listen_socket_fd() const;
 		std::vector<int>	get_client_write_fds() const;

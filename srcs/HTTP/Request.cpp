@@ -54,12 +54,17 @@ std::string Request::_validate_method(std::string method)
 		if (method.compare(valid_methods[i]) == 0)
 			return method;
 	}
-	throw std::runtime_error("Invalid method");
+	throw HTTPException(400, "Invalid method");
 }
 
 std::string Request::_extract_uri(const std::string &uri_string)
 {
-	return ft::url_decode(uri_string.substr(0, uri_string.find('?')));
+	return uri_string.substr(0, uri_string.find_last_of('/') + 1);
+}
+
+std::string	_extract_target(const std::string &uri_string)
+{
+	return uri_string.substr(uri_string.find_last_of('/') + 1, uri_string.find('?'));
 }
 
 // TO DO: double check if indexing is correct..
@@ -79,7 +84,7 @@ std::map<std::string, std::string> Request::_extract_query(const std::string &ur
 		}
 		catch(const std::exception& e)
 		{
-			break;
+			throw HTTPException(400, e.what());
 		}
 		query_begin_index = next_index;
 	}
@@ -98,9 +103,12 @@ void Request::_parse_request_line()
 		std::runtime_error("Invalid request start line");
 	}
 
+	std::string decoded_uri = url_decode(request_line_tokens[1]);
+
 	this->_request_start_line.method = this->_validate_method(request_line_tokens[0]);
-	this->_request_start_line.uri = this->_extract_uri(request_line_tokens[1]);
-	this->_request_start_line.query = this->_extract_query(request_line_tokens[1]);
+	this->_request_start_line.uri = this->_extract_uri(decoded_uri);
+	this->_request_start_line.target = this->_extract_target(decoded_uri);
+	this->_request_start_line.query = this->_extract_query(decoded_uri);
 	this->_request_start_line.protocol = request_line_tokens[2]; // lower priority might want to validate
 }
 
@@ -125,7 +133,7 @@ void Request::_handle_duplicate_headers(const std::string &key, std::string &ori
 		if (original_value == duplicate_value)
 			return;
 		else
-			throw std::runtime_error("Multiple content-length headers");
+			throw HTTPException(400, "Multiple content-length headers");
 	}
 }
 
@@ -142,11 +150,14 @@ void Request::_parse_request_headers()
 		separator_index = line.find(':');
 		whitespace_index = line.find_first_of(" \n\t\f\r\v");
 		if (whitespace_index < separator_index)
-			throw std::runtime_error("Whitespace found before : during header parsing");
+			throw HTTPException(400, "Whitespace found before : during header parsing");
 		header_field_pair = extract_key_value_pair(line, ':');
 		this->_validate_header_field(header_field_pair);
 		if (header_field_pair.first == "Host")
+		{
+			header_field_pair.second = prune_http_protocol(header_field_pair.second);
 			header_field_pair.second = url_decode(header_field_pair.second);
+		}
 		insert_return = this->_headers.insert(header_field_pair);
 		if (insert_return.second == false)
 			this->_handle_duplicate_headers((*insert_return.first).first, (*insert_return.first).second, header_field_pair.second);
@@ -161,7 +172,7 @@ void Request::_parse_chunked_request_body()
     std::string chunk_size_str;
     std::size_t chunk_size = 0;
 
-	while (ft::getline_CRLF(this->_ss, line) && !line.empty())
+	while (getline_CRLF(this->_ss, line) && !line.empty())
 	{
         std::istringstream chunkLineStream(line);
         chunkLineStream >> std::hex >> chunk_size_str;
@@ -184,13 +195,11 @@ void Request::_parse_chunked_request_body()
 
 		if (chunk_size != chunk_data.size())
 		{
-			throw std::runtime_error("Chunk size and chunk data mismatch");
+			throw HTTPException(400, "Chunk size and chunk data mismatch");
 		}
-
-        // Process the chunk data as needed
-        // For example, you can append it to a buffer or write it to a file
+	
         oss.write(chunk_data.data(), chunk_size);
-		ft::getline_CRLF(this->_ss, line);
+		getline_CRLF(this->_ss, line);
     }
     // Process the complete request
 	this->_body = oss.str();
@@ -199,7 +208,7 @@ void Request::_parse_chunked_request_body()
 void Request::_parse_encoded_request_body()
 {
 	this->_parse_chunked_request_body();
-	this->_parse_request_headers();
+	// this->_parse_request_headers();
 }
 
 // void Request::_parse_content_type(const std::string *content_type)
@@ -215,7 +224,7 @@ void Request::_parse_request()
 	this->_parse_request_line();
 	this->_parse_request_headers();
 	if (this->_headers.find("Host") == this->_headers.end())
-		throw std::runtime_error("Host field not found.");
+		throw HTTPException(400 , "Host field not found.");
 }
 
 #pragma endregion ClassUtility
@@ -230,6 +239,11 @@ std::string Request::get_method() const
 std::string Request::get_uri() const
 {
 	return this->_request_start_line.uri;
+}
+
+std::string Request::get_target() const
+{
+	return this->_request_start_line.target;
 }
 
 std::string Request::get_protocol() const
@@ -291,40 +305,47 @@ void Request::process_request()
 
 	if (header_break_index == std::string::npos)
 		return;
-	if (this->_headers.size() == 0)
-		this->_parse_request();
+	try
+	{
+		if (this->_headers.size() == 0)
+			this->_parse_request();
 
-	std::map<std::string, std::string>::iterator transfer_encoding;
-	std::map<std::string, std::string>::iterator content_length;
+		std::map<std::string, std::string>::iterator transfer_encoding;
+		std::map<std::string, std::string>::iterator content_length;
 
-	transfer_encoding = this->_headers.find("Transfer-Encoding");
-	content_length = this->_headers.find("Content-Length");
-	if (transfer_encoding == this->_headers.end()
-	&& content_length == this->_headers.end())
+		transfer_encoding = this->_headers.find("Transfer-Encoding");
+		content_length = this->_headers.find("Content-Length");
+		if (transfer_encoding == this->_headers.end()
+		&& content_length == this->_headers.end())
+		{
+			this->_read_state = FINISHED;
+			return;
+		}
+		if ((transfer_encoding != this->_headers.end())
+			&& (header_break_index == this->_ss.str().rfind("0" CRLF CRLF)))
+		{
+			std::vector<std::string> temp = tokenise_str(transfer_encoding->second);
+			if (temp[temp.size() - 1] != "chunked")
+				throw HTTPException(400, "Chunked was not the last encoding type.");
+			this->_parse_encoded_request_body();
+			this->_read_state = FINISHED;
+		}
+		else if ((content_length != this->_headers.end())
+				&& (std::strtoul(content_length->second.c_str(), NULL, 10) == (this->_ss.str().length() - header_break_index + 4)))
+		{
+			this->_body = this->_ss.str().substr(header_break_index + 4);
+			this->_read_state = FINISHED;
+		}
+		// else if (this->_headers.find("Content-Type") != this->_headers.end())
+		// 	this->_parse_content_type(this->_headers["Content-Type"], this->_ss);
+	}
+	catch (const HTTPException& e)
 	{
 		this->_read_state = FINISHED;
-		return;
-	}
-	else if (transfer_encoding != this->_headers.end()
-			&& content_length != this->_headers.end())
-		throw std::runtime_error("Both Transfer-Encoding and Content-Length found");
-	if ((transfer_encoding != this->_headers.end())
-		&& (header_break_index == this->_ss.str().rfind("0" CRLF CRLF)))
-	{
-		this->_parse_encoded_request_body();
-		this->_read_state = FINISHED;
-	}
-	else if ((content_length != this->_headers.end())
-			&& (std::strtoul(content_length->second.c_str(), NULL, 10)== (this->_ss.str().length() - header_break_index + 4)))
-	{
-		this->_body = this->_ss.str().substr(header_break_index + 4);
-		this->_read_state = FINISHED;
-	}
-	// else if (this->_headers.find("Content-Type") != this->_headers.end())
-	// 	this->_parse_content_type(this->_headers["Content-Type"], this->_ss);	
+		throw e;
+	}	
 }
 
 #pragma endregion PublicMemberMethods
-
 
 }

@@ -5,7 +5,6 @@ namespace ft
 
 #pragma region ClassVariables
 
-
 const char *WebserverConfig::all_directives_array[] =	{
 												"user",
 												"pid",
@@ -101,7 +100,7 @@ std::string WebserverConfig::_parse_readable_lines(std::stringstream &cached_str
         if (line.find("#") != std::string::npos){
 			line.erase(hash_pos);
 		}
-		if (line.find_first_not_of(" \t") == std::string::npos)
+		if (line.find_first_not_of(" \t\r") == std::string::npos)
 			continue;
         result += line + '\n';
     }
@@ -109,8 +108,8 @@ std::string WebserverConfig::_parse_readable_lines(std::stringstream &cached_str
 }
 
 void WebserverConfig::_parse_server_conf(const std::string &conf_str){
-	std::map<std::string, std::string> block_directives;
-	std::pair<long, ServerConfig> block_pair;
+	std::map<std::string, std::string>	block_directives;
+	std::pair<long, ServerConfig>		block_pair;
 
 	block_directives = Config::parse_block_directives(conf_str);
 	for (directive_container_type::iterator it = block_directives.begin(); it != block_directives.end(); ++it){

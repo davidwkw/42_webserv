@@ -21,7 +21,6 @@ const char *ServerConfig::all_directives_array[] = {
 
 const char *ServerConfig::normal_directives_array[] =	{
 														"index",
-														"error_page",
 														"return",
 														"cgi",
 														"autoindex",
@@ -32,6 +31,7 @@ const char *ServerConfig::normal_directives_array[] =	{
 														};
 
 const char *ServerConfig::array_directives_array[] = {
+													"error_page",
 													"error_log",
 													"server_name",
 													"listen"
@@ -118,16 +118,6 @@ const std::vector<std::vector<std::string> > ServerConfig::error_page() const
 	return this->find_array_directive("error_page");
 }
 
-const std::string ServerConfig::client_body_temp_path() const
-{
-	return this->find_normal_directive("client_body_temp_path").front();
-}
-
-const std::string ServerConfig::root() const
-{
-	return this->find_normal_directive("root").back();
-}
-
 const std::vector<std::string> ServerConfig::try_files() const
 {
 	return this->find_normal_directive("try_files");
@@ -141,11 +131,6 @@ const std::vector<std::vector<std::string> > ServerConfig::listen() const
 const std::vector<std::string> ServerConfig::client_max_body_size() const
 {
 	return this->find_normal_directive("client_max_body_size");
-}
-
-const std::string ServerConfig::autoindex() const
-{
-	return this->find_normal_directive("autoindex").front();
 }
 
 const std::vector<std::string> ServerConfig::index() const
@@ -167,6 +152,30 @@ const std::vector<unsigned int> ServerConfig::ports() const
 		ret_vector.push_back(std::strtoul(cit->back().c_str(), NULL, 10));
 	}
 	return ret_vector;
+}
+
+const std::string ServerConfig::root() const
+{
+	std::vector<std::string> temp_vect = this->find_normal_directive("root");
+	if (temp_vect.size() != 0)
+		return temp_vect.front();
+	return "/public/";
+}
+
+const std::string ServerConfig::client_body_temp_path() const
+{
+	std::vector<std::string> temp_vect = this->find_normal_directive("client_body_temp_path");
+	if (temp_vect.size() != 0)
+		return temp_vect.front();
+	return "client_body_temp";
+}
+
+const std::string ServerConfig::autoindex() const
+{
+	std::vector<std::string> temp_vect = this->find_normal_directive("autoindex");
+	if (temp_vect.size() != 0)
+		return temp_vect.front();
+	return "off";
 }
 
 #pragma endregion Getters

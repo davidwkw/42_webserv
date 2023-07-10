@@ -6,7 +6,7 @@ namespace ft
 #pragma region Constructors
 
 HTTPServer::HTTPServer(unsigned int port, int backlog, unsigned int max_clients, unsigned int buffer_size, std::vector<ServerConfig> server_configs) 
-: Server(AF_INET, SOCK_STREAM, 0, port, INADDR_ANY, backlog), _port(port), _max_clients(max_clients), _buffer_size(buffer_size), _client_read_fds(max_clients, 0), _client_write_fds(max_clients, 0), _fd_to_request_map(), _fd_to_response_map(), _server_configs(server_configs)
+: Server(AF_INET, SOCK_STREAM, 0, port, INADDR_ANY, backlog), _port(port), _max_clients(max_clients), _buffer_size(buffer_size), _client_read_fds(max_clients, 0), _client_write_fds(max_clients, 0), _server_configs(server_configs)
 {}
 
 HTTPServer::~HTTPServer()
@@ -29,6 +29,32 @@ HTTPServer::~HTTPServer()
 
 #pragma endregion Constructors
 
+#pragma region ClassUtility
+
+void HTTPServer::_assign_config_to_client(const int &fd)
+{
+	bool config_found = false;
+	long server_config_index = 0;
+	std::string origin_domain = this->_fd_to_client_map[fd].get_request().get_header("Host");
+
+	for (std::vector<ServerConfig>::iterator it = this->_server_configs.begin(); it != this->_server_configs.end(); it++)
+	{
+		if (it->server_names().find(origin_domain) != it->server_names().end())
+		{
+			config_found = true;
+			break;
+		}
+		server_config_index++;
+	}
+
+	if (!config_found)
+		server_config_index = 0;
+	
+	this->_fd_to_client_map[fd].set_server_config(this->_server_configs[server_config_index]);
+}
+
+#pragma endregion ClassUtility
+
 void HTTPServer::accept_connection()
 {	
 	int accept_fd = 0;
@@ -38,53 +64,39 @@ void HTTPServer::accept_connection()
 	accept_fd = accept(this->_socket->get_sock(), (struct sockaddr *)& address, (socklen_t *)&addrlen);
 	if (accept_fd < 0)
 	{
+		// need to somehow handle this, this will kill the server immediately
 		throw std::runtime_error(ret_str_error("Failure to accept incoming connection"));
 	}
 	insert_into_client_read_fd(accept_fd);
-	this->_fd_to_request_map.insert(std::make_pair(accept_fd, Request()));
+	this->_fd_to_client_map.insert(std::make_pair(accept_fd, Client(accept_fd, this->_buffer_size)));
 }
 
-int HTTPServer::process_request(const int &fd)
+void HTTPServer::handle_request(const int &fd)
 {
-	char *	buffer = static_cast<char*>(calloc(this->_buffer_size, sizeof(char)));
-	int		read_bytes = 0;
-
-	read_bytes = recv(fd, buffer, BUFFER_SIZE - 1, MSG_NOSIGNAL);
-	if (read_bytes <= 0)
+	if (this->_fd_to_client_map[fd].handle_request() <= 0)
 	{
-		free(buffer);
-		return -1;
+		this->remove_fd(fd);
+		close(fd);
+		return;
 	}
-	else
-	{    
-		this->_fd_to_request_map[fd].append_to_request(buffer);
-		this->_fd_to_request_map[fd].process_request();
-		if (this->_fd_to_request_map[fd].get_request_read_state() == Request::FINISHED)
-		{
-			remove_from_client_read_fd(fd);
-			insert_into_client_write_fd(fd);
-			this->_fd_to_response_map.insert(std::make_pair(fd, Response()));
-		}
-		free(buffer);
-		return 0;
+	if (this->_fd_to_client_map[fd].get_process_state() == Client::PROCESSING_RESPONSE)
+	{
+		insert_into_client_write_fd(fd);
+		remove_from_client_read_fd(fd);
 	}
 }
 
-// void HTTPServer::return_response(const int &fd)
-// {
-
-	// send(this->fd, this->_fd_to_response_map[fd].get_string(), this->_fd_to_response_map[fd].get_string().length(), MSG_NOSIGNAL);
-	// for (std::vector<int>::iterator it = this->_client_write_fds.begin(); it != this->_client_write_fds.end(); it++)
-	// {
-	// 	if (*it == fd)
-	// 	{
-	// 		*it = 0;
-	// 		this->_fd_to_response_map.erase(fd);
-	// 		break;
-	// 	}
-	// }
-	// close(fd);
-// }
+void HTTPServer::handle_response(const int &fd)
+{
+	this->_assign_config_to_client(fd);
+	this->_fd_to_client_map[fd].handle_response();
+	if (this->_fd_to_client_map[fd].get_process_state() == Client::FINISHED_PROCESSING)
+	{
+		this->_fd_to_client_map.erase(fd);
+		this->remove_from_client_write_fd(fd);
+		close(fd);
+	}
+}
 
 #pragma region Getters
 
@@ -162,9 +174,8 @@ void HTTPServer::remove_from_client_write_fd(const int fd)
 
 void HTTPServer::remove_fd(int fd)
 {
-	this->_fd_to_request_map.erase(fd);
+	this->_fd_to_client_map.erase(fd);
 	remove_from_client_read_fd(fd);
-	this->_fd_to_response_map.erase(fd);
 	remove_from_client_write_fd(fd);
 }
 

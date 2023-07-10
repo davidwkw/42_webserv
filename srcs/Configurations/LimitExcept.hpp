@@ -9,7 +9,8 @@
 namespace ft
 {	
 
-class LimitExcept : public Config{
+class LimitExcept : public Config
+{
 	private:
 		static const char 								*all_directives_array[];
 		static const char 								*normal_directives_array[];
