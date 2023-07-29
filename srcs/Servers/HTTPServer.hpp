@@ -2,6 +2,7 @@
 #define __HTTP_SERVER__
 
 #include <cstring>
+#include <list>
 #include "Server.hpp"
 #include "../../includes/webserv.hpp"
 
@@ -12,8 +13,8 @@ class HTTPServer : public Server
 	private:
 		std::map<int, Client>			_fd_to_client_map;
 		std::vector<ServerConfig>		_server_configs;
-		std::vector<int>				_client_read_fds;
-		std::vector<int>				_client_write_fds;
+		std::list<int>					_client_read_fds;
+		std::list<int>					_client_write_fds;
 		unsigned int 					_port;
 		unsigned int 					_max_clients;
 		unsigned int 					_buffer_size;
@@ -29,12 +30,12 @@ class HTTPServer : public Server
 		void				handle_response(const int &fd);
 
 		int					get_listen_socket_fd() const;
-		std::vector<int>	get_client_write_fds() const;
-		std::vector<int>	get_client_read_fds() const;
+		std::list<int>		get_client_write_fds() const;
+		std::list<int>		get_client_read_fds() const;
 		unsigned int		get_port() const;
 
-		void				insert_into_client_read_fd(const int fd);
-		void				insert_into_client_write_fd(const int fd);
+		void				insert_into_client_read_fds(const int fd);
+		void				insert_into_client_write_fds(const int fd);
 
 		void				remove_fd(int fd);
 		void				remove_from_client_read_fd(const int fd);

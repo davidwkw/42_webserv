@@ -48,7 +48,8 @@
 		"set": "cpp",
 		"unordered_set": "cpp",
 		"map": "cpp",
-		"queue": "cpp"
+		"queue": "cpp",
+		"list": "cpp"
 	},
 	"C_Cpp.default.configurationProvider": "ms-vscode.makefile-tools",
 	"C_Cpp.errorSquiggles": "enabled"

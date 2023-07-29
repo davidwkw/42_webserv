@@ -36,7 +36,12 @@ std::vector<std::string> tokenise_str(const std::string & str, char c = ' ')
 	std::stringstream ss(str);
 
 	while (std::getline(ss, temp, c))
-		ret_vector.push_back(trim_str(temp, " \n\t"));
+	{
+		if (!temp.empty())
+		{
+			ret_vector.push_back(trim_str(temp, " \n\t"));
+		}
+	}
 	return ret_vector;
 }
 

@@ -6,25 +6,21 @@ namespace ft
 #pragma region Constructors
 
 HTTPServer::HTTPServer(unsigned int port, int backlog, unsigned int max_clients, unsigned int buffer_size, std::vector<ServerConfig> server_configs) 
-: Server(AF_INET, SOCK_STREAM, 0, port, INADDR_ANY, backlog), _port(port), _max_clients(max_clients), _buffer_size(buffer_size), _client_read_fds(max_clients, 0), _client_write_fds(max_clients, 0), _server_configs(server_configs)
+: Server(AF_INET, SOCK_STREAM, 0, port, INADDR_ANY, backlog), _port(port), _max_clients(max_clients), _buffer_size(buffer_size), _client_read_fds(), _client_write_fds(), _server_configs(server_configs)
 {}
 
 HTTPServer::~HTTPServer()
 {
-	for (std::vector<int>::iterator it = this->_client_read_fds.begin(); it != this->_client_read_fds.end(); it++)
+	for (std::list<int>::iterator it = this->_client_read_fds.begin(); it != this->_client_read_fds.end(); it++)
 	{
-		if (*it != 0)
-		{
-			close(*it);
-		}
+		close(*it);
 	}
-	for (std::vector<int>::iterator it = this->_client_write_fds.begin(); it != this->_client_write_fds.end(); it++)
+	for (std::list<int>::iterator it = this->_client_write_fds.begin(); it != this->_client_read_fds.end(); it++)
 	{
-		if (*it != 0)
-		{
-			close(*it);
-		}
+		close(*it);
 	}
+	this->_client_read_fds.clear();
+	this->_client_write_fds.clear();
 }
 
 #pragma endregion Constructors
@@ -67,7 +63,7 @@ void HTTPServer::accept_connection()
 		// need to somehow handle this, this will kill the server immediately
 		throw std::runtime_error(ret_str_error("Failure to accept incoming connection"));
 	}
-	insert_into_client_read_fd(accept_fd);
+	insert_into_client_read_fds(accept_fd);
 	this->_fd_to_client_map.insert(std::make_pair(accept_fd, Client(accept_fd, this->_buffer_size)));
 }
 
@@ -81,7 +77,7 @@ void HTTPServer::handle_request(const int &fd)
 	}
 	if (this->_fd_to_client_map[fd].get_process_state() == Client::PROCESSING_RESPONSE)
 	{
-		insert_into_client_write_fd(fd);
+		insert_into_client_write_fds(fd);
 		remove_from_client_read_fd(fd);
 	}
 }
@@ -105,12 +101,12 @@ int HTTPServer::get_listen_socket_fd() const
 	return this->_socket->get_sock();
 }
 
-std::vector<int> HTTPServer::get_client_read_fds() const
+std::list<int> HTTPServer::get_client_read_fds() const
 {
 	return this->_client_read_fds;
 }
 
-std::vector<int> HTTPServer::get_client_write_fds() const
+std::list<int> HTTPServer::get_client_write_fds() const
 {
 	return this->_client_write_fds;
 }
@@ -124,52 +120,25 @@ unsigned int HTTPServer::get_port() const
 
 #pragma region Setters
 
-void HTTPServer::insert_into_client_read_fd(const int fd)
+void HTTPServer::insert_into_client_read_fds(const int fd)
 {
-	for (std::vector<int>::iterator it = this->_client_read_fds.begin(); it != this->_client_read_fds.end(); it++)
-	{
-		if (*it == 0)
-		{
-			*it = fd;
-			break;
-		}
-	}
+	this->_client_read_fds.push_back(fd);
+
 }
 
-void HTTPServer::insert_into_client_write_fd(const int fd)
+void HTTPServer::insert_into_client_write_fds(const int fd)
 {
-	for (std::vector<int>::iterator it = this->_client_write_fds.begin(); it != this->_client_write_fds.end(); it++)
-	{
-		if (*it == 0)
-		{
-			*it = fd;
-			break;
-		}
-	}
+	this->_client_write_fds.push_back(fd);
 }
 
 void HTTPServer::remove_from_client_read_fd(const int fd)
 {
-	for (std::vector<int>::iterator it = this->_client_read_fds.begin(); it != this->_client_read_fds.end(); it++)
-	{
-		if (*it == fd)
-		{
-			*it = 0;
-			break;
-		}
-	}
+	this->_client_read_fds.remove(fd);
 }
 
 void HTTPServer::remove_from_client_write_fd(const int fd)
 {
-	for (std::vector<int>::iterator it = this->_client_write_fds.begin(); it != this->_client_write_fds.end(); it++)
-	{
-		if (*it == fd)
-		{
-			*it = 0;
-			break;
-		}
-	}
+	this->_client_write_fds.remove(fd);
 }
 
 void HTTPServer::remove_fd(int fd)

@@ -5,9 +5,17 @@ namespace ft
 
 #pragma region Constructors
 
-// WebServer::WebServer(){}
+WebServer::WebServer(const std::string &conf_path) : _webserver_config(conf_path), _max_fd(0)
+{
+    FD_ZERO(&this->_read_fds);
+    FD_ZERO(&this->_write_fds);
+}
 
-WebServer::WebServer(const WebserverConfig &config, char **envp) : _webserver_config(config), _max_fd(0), _envp(envp){}
+WebServer::WebServer(const WebserverConfig &config) : _webserver_config(config), _max_fd(0)
+{
+    FD_ZERO(&this->_read_fds);
+    FD_ZERO(&this->_write_fds);
+}
 
 WebServer::~WebServer(){}
 
@@ -58,10 +66,9 @@ void WebServer::_append_read_sockets_to_readfd()
 {
     for (std::map<unsigned int, HTTPServer>::iterator it = this->_port_http_server_map.begin(); it != this->_port_http_server_map.end(); it++)
     {
-        for (std::vector<int>::iterator it2 = it->second.get_client_read_fds().begin(); it2 != it->second.get_client_read_fds().end(); it2++)
+        for (std::list<int>::iterator it2 = it->second.get_client_read_fds().begin(); it2 != it->second.get_client_read_fds().end(); it2++)
         {
-            if (*it2 > 0)
-                FD_SET(*it2, &this->_read_fds);
+            FD_SET(*it2, &this->_read_fds);
             if (*it2 > this->_max_fd)
                 this->_max_fd = *it2;
         }
@@ -72,10 +79,9 @@ void WebServer::_append_write_sockets_to_writefd()
 {
     for (std::map<unsigned int, HTTPServer>::iterator it = this->_port_http_server_map.begin(); it != this->_port_http_server_map.end(); it++)
     {
-        for (std::vector<int>::iterator it2 = it->second.get_client_write_fds().begin(); it2 != it->second.get_client_write_fds().end(); it2++)
+        for (std::list<int>::iterator it2 = it->second.get_client_write_fds().begin(); it2 != it->second.get_client_write_fds().end(); it2++)
         {
-            if (*it2 > 0)
-                FD_SET(*it2, &this->_write_fds);
+            FD_SET(*it2, &this->_write_fds);
             if (*it2 > this->_max_fd)
                 this->_max_fd = *it2;
         }
@@ -97,13 +103,13 @@ void WebServer::_perform_socket_io()
 
     for (std::map<unsigned int, HTTPServer>::iterator it = this->_port_http_server_map.begin(); it != this->_port_http_server_map.end(); it++)
     {
-        for (std::vector<int>::iterator it2 = it->second.get_client_read_fds().begin(); it2 != it->second.get_client_read_fds().end(); it2++)
+        for (std::list<int>::iterator it2 = it->second.get_client_read_fds().begin(); it2 != it->second.get_client_read_fds().end(); it2++)
         {
             if (FD_ISSET(*it2, &this->_read_fds))
                 it->second.handle_request(*it2);
         }
 
-        for (std::vector<int>::iterator it2 = it->second.get_client_write_fds().begin(); it2 != it->second.get_client_write_fds().end(); it2++)
+        for (std::list<int>::iterator it2 = it->second.get_client_write_fds().begin(); it2 != it->second.get_client_write_fds().end(); it2++)
         {
             if (FD_ISSET(*it2, &this->_write_fds))
                 it->second.handle_response(*it2);

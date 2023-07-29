@@ -76,7 +76,7 @@ std::map<std::string, std::string> Config::_init_directive_defaults(){
 												directive_default_pair("root", "public"),
 												directive_default_pair("client_body_temp_path", "client_body_temp"),
 												directive_default_pair("client_max_body_size", "1m"),
-												directive_default_pair("limit_except", "GET POST DELETE")
+												directive_default_pair("limit_except", "GET")
 												};
 
 	std::map<std::string, std::string> fill_map;
@@ -92,7 +92,8 @@ Config::Config() : _directives(){
 
 Config::~Config(){}
 
-Config::Config(const Config &ref) : _directives(ref._directives){
+Config::Config(const Config &ref) : _directives(ref._directives)
+{
 	*this = ref;
 }
 
@@ -103,7 +104,8 @@ Config &Config::operator=(const Config &ref){
 	return *this;
 }
 
-Config::Config(const directive_container_type &directives) : _directives(){
+Config::Config(const directive_container_type &directives) : _directives()
+{
 	this->_directives = directives;
 	_fill_directive_defaults(this->_directives, Config::all_directives_set);
 }

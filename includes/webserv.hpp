@@ -22,13 +22,12 @@
 #include "../srcs/Client/Client.hpp"
 #include "../srcs/Exception/HTTPException.hpp"
 
-
 #define BACKLOG 5
 #define PORT 8080
 #define HTTP_PROTOCOL 1.1
 #define DEFAULT_CONFIG_PATH "configs/default.conf"
 #define CRLF "\r\n"
-#define BUFFER_SIZE 8190
+#define BUFFER_SIZE 8192
 #define TIMEOUT 1000*5
 #define BACKLOG 3
 #define MAX_CLIENTS BACKLOG*10

@@ -34,11 +34,14 @@ class Client
 	private:
 		ProcessState		_state;
 		int					_fd;
-		ServerConfig		_server_config;
+		ServerConfig		_server_config; // TODO make it as pointer
+		// LocationConfig		*_location_config; not empty? NULL?
 		Request				_request;
 		Response			_response;
 		int					_status_code;
 		unsigned int 		_buffer_size;
+		std::ifstream		_temp_stream;
+		std::stringstream	_ss;
 		std::ifstream		_response_file_stream;
 		std::ofstream		_request_file_stream;
 

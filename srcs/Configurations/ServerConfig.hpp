@@ -7,12 +7,13 @@
 #include "LocationConfig.hpp"
 #include "Config.hpp"
 #include "WebserverConfig.hpp"
+#include "CommonServerConfig.hpp"
 #include "../../includes/webserv.hpp"
 
 namespace ft
 {
 
-class ServerConfig : public Config
+class ServerConfig : public CommonServerConfig
 {
 	private:
 		std::map<std::string, LocationConfig> 	_locations;
@@ -38,22 +39,16 @@ class ServerConfig : public Config
 
 #pragma region Getters
 
-		const std::vector<std::vector<std::string> >	error_page() const;
-		const std::vector<std::vector<std::string> >	listen() const;
 		const std::map<std::string, LocationConfig>		locations() const;
-		const std::set<std::string> 					server_names() const;
-		const std::vector<std::string> 					index() const;
-		const std::vector<std::string> 					try_files() const;
-		const std::vector<std::string> 					client_max_body_size() const;
-		const std::vector<std::string> 					index() const;
-		const std::vector<std::string> 					error_log() const;
 		const std::vector<unsigned int>					ports() const;
+		const std::vector<std::vector<std::string> >	listen() const;
+		const std::set<std::string> 					server_names() const;
+		const std::vector<std::string> 					client_max_body_size() const;
 		const std::string 								client_body_temp_path() const;
-		const std::string			 					autoindex() const;
-		const std::string								root() const;
 
 #pragma endregion Getters
 };
+
 }
 
 #endif

@@ -17,7 +17,6 @@ class WebServer{
 		WebserverConfig						_webserver_config;
 		std::map<unsigned int, HTTPServer>	_port_http_server_map;
 		int 								_max_fd;
-		char								**_envp;
 
 		void _initialise_socket_fd();
 		void _reset_fd_sets();
@@ -28,8 +27,8 @@ class WebServer{
 		void _perform_socket_io();
 
 	public:
-		// WebServer();
-		WebServer(const WebserverConfig &config, char **envp);
+		WebServer(const WebserverConfig &config);
+		WebServer(const std::string &config_path);
 		~WebServer();
 
 		void run();

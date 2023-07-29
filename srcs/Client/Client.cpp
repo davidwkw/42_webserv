@@ -10,10 +10,10 @@ Client::Client(int fd, unsigned int buffer_size) : _fd(fd), _buffer_size(buffer_
 
 Client::~Client()
 {
-	if (this->_request_file_stream.is_open())
-		this->_request_file_stream.close();
-	if (this->_request_file_stream.is_open())
-		this->_response_file_stream.close();
+	// if (this->_request_file_stream.is_open())
+	// 	this->_request_file_stream.close();
+	// if (this->_request_file_stream.is_open())
+	// 	this->_response_file_stream.close();
 	// remember to delete autoindex file;
 	// if (endpoint location was enable remove temp auto index file)
 	// remove(path);
@@ -67,9 +67,17 @@ void Client::_is_method_allowed(const std::string &endpoint)
 void Client::_handle_get(const std::string &file_path)
 {
 	if (!this->_request.get_target().empty())
-		this->_request_file_stream.open(file_path.c_str());
+	{
+		this->_temp_stream.open(file_path.c_str());
+		this->_response_file_stream = static_cast<std::istream *>(&this->_temp_stream);
+	}
+		// this->_request_file_stream.open(file_path.c_str());
 	else if (this->_server_config.autoindex() == "on")
-		this->_handle_auto_index(file_path);
+	{
+		this->_ss;
+		this->_response_file_stream = static_cast<std::istream *>(&this->_ss);
+	}
+		// this->_handle_auto_index(file_path);
 	else
 	{
 		const std::vector<std::string> indexs = this->_server_config.locations().find(file_path)->second.index();
@@ -86,32 +94,6 @@ void Client::_handle_get(const std::string &file_path)
 	this->_status_code = 200;
 }
 
-// std::string Client::_generate_dir_content_list_html(const std::string &dir)
-// {
-// 	std::ostringstream	oss;
-//     struct dirent		*entry;
-// 	DIR					*folder;
-
-//     folder = opendir(dir.c_str());
-//     if(folder == NULL)
-//         throw HTTPException(404, "Path non-existent");
-// 	while ((entry = readdir(folder)) != NULL)
-// 	{
-// 		std::string path = this->_request.get_uri();
-
-// 		if (entry->d_type == DT_DIR)
-// 		{
-// 			if (strcmp(entry->d_name, "..") == 0)
-// 				path = path.substr(0, path.find_last_of('/', path.find_last_of('/')) + 1);
-// 			oss << "<a href=\"/" << path << "\">" << entry->d_name << "</a>\n";
-// 		}
-// 		else if (entry->d_type == DT_REG)
-// 			oss << "<a href=\"/" << (path + entry->d_name) << "\">" << entry->d_name << "</a>\n";
-// 	}
-// 	closedir(folder);
-// 	return oss.str();
-// }
-
 void Client::_handle_auto_index(const std::string &dir)
 {
 	std::ostringstream	temp_autoindex_path;
@@ -122,7 +104,7 @@ void Client::_handle_auto_index(const std::string &dir)
 	auto_index_template.open(AUTOINDEX_TEMPLATE_PATH); // should probably be a directive in the config file..
 	if (!auto_index_template.is_open())
 		HTTPException(500, "Critical mess up. Couldn't open autoindex.html");
-	temp_autoindex_path << "/public/temp_autoindex/fd_" << this->_fd << "_auto_index";
+	temp_autoindex_path << "/public/temp_autoindex/fd_" << this->_fd << "_autoindex";
 	output.open(temp_autoindex_path.str().c_str());
 	if (!output.is_open())
 		HTTPException(500, "Critical mess up. Couldn't create " + temp_autoindex_path.str());
@@ -140,7 +122,7 @@ void Client::_handle_auto_index(const std::string &dir)
 		{
 			output << this->_generate_dir_content_list_html(dir);
 		}
-		output << line;
+		output << line << "\n";
 	}
 	auto_index_template.close();
 	output.close();
@@ -171,7 +153,7 @@ void Client::_handle_exception()
 		{
 			if (cit[index] == oss.str())
 			{
-				file_name = "/" + cit[index];
+				file_name = cit[index];
 				break;
 			}
 		}
@@ -229,7 +211,7 @@ void Client::set_process_state(const ProcessState &state)
 
 int Client::handle_request()
 {
-	char *	buffer = static_cast<char*>(calloc(this->_buffer_size, sizeof(char)));
+	char *	buffer = static_cast<char*>(calloc(this->_buffer_size, sizeof(char))); // probably some bug here sizeof(char) + 1?
 
 	if (recv(this->_fd, buffer, BUFFER_SIZE - 1, MSG_NOSIGNAL) <= 0)
 	{
@@ -272,7 +254,6 @@ void Client::handle_response()
 			this->_status_code = e.get_status_code();
 		}
 	}
-	else if ()
 	else if ((this->_status_code < 200 || this->_status_code >= 300)
 			&& this->_state == PROCESSING_RESPONSE)
 	{

@@ -27,7 +27,8 @@ const char *ServerConfig::normal_directives_array[] =	{
 														"root",
 														"client_body_temp_path",
 														"try_files",
-														"client_max_body_size"
+														"client_max_body_size",
+														"limit_except"
 														};
 
 const char *ServerConfig::array_directives_array[] = {
@@ -49,15 +50,17 @@ const std::set<std::string> ServerConfig::array_directives_set = init_string_set
 
 const std::set<std::string> ServerConfig::block_directives_set = init_string_set(ServerConfig::block_directives_array);
 
-ServerConfig::ServerConfig(void) : Config(), _locations(){}
+ServerConfig::ServerConfig(void) : CommonServerConfig(), _locations(){}
 
 ServerConfig::~ServerConfig(void){}
 
-ServerConfig::ServerConfig(const ServerConfig &ref){
+ServerConfig::ServerConfig(const ServerConfig &ref)
+{
 	*this = ref;
 }
 
-ServerConfig &ServerConfig::operator=(const ServerConfig &ref){
+ServerConfig &ServerConfig::operator=(const ServerConfig &ref)
+{
 	if (this != &ref)
 	{
 		this->_directives = ref._directives;
@@ -66,7 +69,8 @@ ServerConfig &ServerConfig::operator=(const ServerConfig &ref){
 	return *this;
 }
 
-ServerConfig::ServerConfig(Config::directive_container_type directives, const std::string &server_str) : Config(directives, ServerConfig::all_directives_set) {
+ServerConfig::ServerConfig(Config::directive_container_type directives, const std::string &server_str) : CommonServerConfig(directives, ServerConfig::all_directives_set)
+{
 	this->_directives = Config::parse_all_directives(server_str, ServerConfig::all_directives_set);
 	this->_parse_location_conf(server_str);
 }
@@ -113,34 +117,22 @@ const std::set<std::string> ServerConfig::server_names() const
 	return ret_set;
 }
 
-const std::vector<std::vector<std::string> > ServerConfig::error_page() const
-{
-	return this->find_array_directive("error_page");
-}
-
-const std::vector<std::string> ServerConfig::try_files() const
-{
-	return this->find_normal_directive("try_files");
-}
-
 const std::vector<std::vector<std::string> > ServerConfig::listen() const
 {
 	return this->find_array_directive("listen");
 }
 
+const std::string ServerConfig::client_body_temp_path() const
+{
+	std::vector<std::string> temp_vect = this->find_normal_directive("client_body_temp_path");
+	if (temp_vect.size() != 0)
+		return temp_vect.front();
+	return "client_body_temp";
+}
+
 const std::vector<std::string> ServerConfig::client_max_body_size() const
 {
 	return this->find_normal_directive("client_max_body_size");
-}
-
-const std::vector<std::string> ServerConfig::index() const
-{
-	return this->find_normal_directive("index");
-}
-
-const std::vector<std::string> ServerConfig::error_log() const
-{
-	return this->find_normal_directive("error_log");
 }
 
 const std::vector<unsigned int> ServerConfig::ports() const
@@ -152,30 +144,6 @@ const std::vector<unsigned int> ServerConfig::ports() const
 		ret_vector.push_back(std::strtoul(cit->back().c_str(), NULL, 10));
 	}
 	return ret_vector;
-}
-
-const std::string ServerConfig::root() const
-{
-	std::vector<std::string> temp_vect = this->find_normal_directive("root");
-	if (temp_vect.size() != 0)
-		return temp_vect.front();
-	return "/public/";
-}
-
-const std::string ServerConfig::client_body_temp_path() const
-{
-	std::vector<std::string> temp_vect = this->find_normal_directive("client_body_temp_path");
-	if (temp_vect.size() != 0)
-		return temp_vect.front();
-	return "client_body_temp";
-}
-
-const std::string ServerConfig::autoindex() const
-{
-	std::vector<std::string> temp_vect = this->find_normal_directive("autoindex");
-	if (temp_vect.size() != 0)
-		return temp_vect.front();
-	return "off";
 }
 
 #pragma endregion Getters
