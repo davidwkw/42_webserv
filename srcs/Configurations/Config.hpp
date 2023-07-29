@@ -57,7 +57,7 @@ class Config{
 
 		directive_container_type parse_all_directives(const std::string &str, const allowed_directives_container_type &inclusion_set = Config::all_directives_set);
 
-		std::map<std::string, std::string> parse_block_directives(const std::string &string);
+		std::multimap<std::string, std::string> parse_block_directives(const std::string &string);
 
 		template <class Iterator>
 		Config(const directive_container_type &directives, Iterator first, Iterator last, typename enable_if<is_same<typename remove_const<typename Iterator::value_type>::type, std::string>::value || is_same<typename remove_const<typename Iterator::value_type>::type, char*>::value>::type* = nullptr){

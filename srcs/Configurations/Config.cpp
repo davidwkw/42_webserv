@@ -196,16 +196,21 @@ void Config::_fill_directive_defaults(directive_container_type &directive_ref, c
 	}
 }
 
-std::map<std::string, std::string> Config::parse_block_directives(const std::string &str){
-	std::map<std::string, std::string> return_map;
-	std::pair<std::string, std::string> directive_pair;
-	std::size_t start_index = 0;
-	std::size_t delimiter_index = start_index;
+std::multimap<std::string, std::string> Config::parse_block_directives(const std::string &str){
+	std::multimap<std::string, std::string>	return_map;
+	std::pair<std::string, std::string>	directive_pair;
+	std::size_t							start_index = 0;
+	std::size_t							delimiter_index = start_index;
 	
-	while ((delimiter_index = str.find_first_of("{}", delimiter_index)) != std::string::npos){
-		start_index = str.find_last_of(';', delimiter_index);
-		if (start_index == std::string::npos)
-			start_index = 0;
+	while ((delimiter_index = str.find_first_of("{}", delimiter_index)) != std::string::npos) // bug if } is found first
+	{
+		if (str[delimiter_index] == '}')
+		{
+			throw std::runtime_error("[WebserverConfig]: Found } before {");
+		}
+		start_index = str.find_last_of('}', delimiter_index);
+		start_index %= std::string::npos;
+		start_index = start_index > 0 ? start_index += 1 : start_index;
 		directive_pair.first = str.substr(start_index, delimiter_index - start_index);
 		directive_pair.first = trim_str(directive_pair.first, " \n\t");
 		directive_pair.second = str_char_limit_span(str.c_str() + delimiter_index, '{', '}');
