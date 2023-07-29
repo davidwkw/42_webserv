@@ -76,12 +76,12 @@ ServerConfig::ServerConfig(Config::directive_container_type directives, const st
 }
 
 void 	ServerConfig::_parse_location_conf(const std::string &cached_string){
-	std::map<std::string, std::string> block_directives;
+	std::multimap<std::string, std::string> block_directives;
 	std::vector<std::string> identifier_tokens;
 	std::pair<std::string, LocationConfig> block_pair;
 
 	block_directives = Config::parse_block_directives(cached_string);
-	for (std::map<std::string, std::string>::iterator it = block_directives.begin(); it != block_directives.end(); ++it){
+	for (std::multimap<std::string, std::string>::iterator it = block_directives.begin(); it != block_directives.end(); ++it){
 		identifier_tokens = tokenise_str(it->first);
 		if (identifier_tokens.size() != 2)
 			throw std::runtime_error("[ServerConfig] Invalid number of identifiers for this context");

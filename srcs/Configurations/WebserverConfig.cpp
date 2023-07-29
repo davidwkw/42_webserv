@@ -42,7 +42,8 @@ WebserverConfig::WebserverConfig(void) : _path(){}
 
 WebserverConfig::~WebserverConfig(void){}
 
-WebserverConfig::WebserverConfig(const WebserverConfig &ref){
+WebserverConfig::WebserverConfig(const WebserverConfig &ref) : _path()
+{
 	*this = ref;
 }
 
@@ -51,8 +52,10 @@ WebserverConfig::WebserverConfig(const std::string &filename) : _path(filename){
 	std::stringstream	ss;
 	std::string			raw;
 	
-	if (this->_open_file(filename, conf_stream) == false) 
+	if (this->_open_file(filename, conf_stream) == false)
+	{
 		throw std::runtime_error("[WebserverConfig] Unable to open path " + filename);
+	}
 	this->_cache_stream(conf_stream, ss);
 	conf_stream.close();
 	raw = this->_parse_readable_lines(ss);
@@ -79,7 +82,8 @@ WebserverConfig &WebserverConfig::operator=(const WebserverConfig &ref){
 #pragma region ClassUtilities
 
 bool	WebserverConfig::_open_file(const std::string &filename, std::ifstream& file){
-	if (filename.empty() == true){
+	if (filename.empty() == true)
+	{
 		return false;
 	}
 	file.open(filename.c_str());
@@ -108,11 +112,11 @@ std::string WebserverConfig::_parse_readable_lines(std::stringstream &cached_str
 }
 
 void WebserverConfig::_parse_server_conf(const std::string &conf_str){
-	std::map<std::string, std::string>	block_directives;
+	std::multimap<std::string, std::string>	block_directives;
 	std::pair<long, ServerConfig>		block_pair;
 
 	block_directives = Config::parse_block_directives(conf_str);
-	for (directive_container_type::iterator it = block_directives.begin(); it != block_directives.end(); ++it){
+	for (std::multimap<std::string, std::string>::iterator it = block_directives.begin(); it != block_directives.end(); ++it){
 		if (it->first == "server"){
 			block_pair.first = this->_servers.size();
 			block_pair.second = ServerConfig(this->_directives, it->second);
