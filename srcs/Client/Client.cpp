@@ -8,16 +8,7 @@ namespace ft
 Client::Client(int fd, unsigned int buffer_size) : _fd(fd), _buffer_size(buffer_size), _state(PROCESSING_REQUEST), _request(), _server_config(), _status_code(), _response(HTTP_PROTOCOL, _status_code), _response_file_stream(), _request_file_stream()
 {}
 
-Client::~Client()
-{
-	// if (this->_request_file_stream.is_open())
-	// 	this->_request_file_stream.close();
-	// if (this->_request_file_stream.is_open())
-	// 	this->_response_file_stream.close();
-	// remember to delete autoindex file;
-	// if (endpoint location was enable remove temp auto index file)
-	// remove(path);
-}
+Client::~Client(){}
 
 #pragma endregion Constructors
 
@@ -43,11 +34,16 @@ void Client::_handle_method(std::string endpoint)
 std::string Client::_match_location(std::string endpoint_str)
 {
 	std::size_t slash_index = endpoint_str.find_last_of('/');
+
 	while (slash_index != std::string::npos)
 	{
 		if (this->_server_config.locations().find(endpoint_str) != this->_server_config.locations().end())
 			return endpoint_str;
-		slash_index = endpoint_str.find_last_of('/', slash_index);
+		if (slash_index == 0)
+		{
+			break;
+		}
+		slash_index = endpoint_str.find_last_of('/', slash_index - 1); // this is also broken
 		endpoint_str = endpoint_str.substr(0, slash_index + 1);
 	}
 	return "";
@@ -211,15 +207,15 @@ void Client::set_process_state(const ProcessState &state)
 
 int Client::handle_request()
 {
-	char *	buffer = static_cast<char*>(calloc(this->_buffer_size, sizeof(char))); // probably some bug here sizeof(char) + 1?
+	char buffer[this->_buffer_size + 1] = {0};
+	std::size_t	bytes_read;
 
-	if (recv(this->_fd, buffer, BUFFER_SIZE - 1, MSG_NOSIGNAL) <= 0)
+	if ((bytes_read = recv(this->_fd, buffer, BUFFER_SIZE, MSG_NOSIGNAL)) <= 0)
 	{
-		free(buffer);
 		return -1;
 	}
+	buffer[bytes_read] = 0;
 	this->_request.append_to_request(buffer);
-	free(buffer);
 	try
 	{
 		this->_request.process_request();
@@ -249,8 +245,6 @@ void Client::handle_response()
 		}
 		catch (const HTTPException &e)
 		{
-			if (this->_response_file_stream.is_open())
-				this->_response_file_stream.close();
 			this->_status_code = e.get_status_code();
 		}
 	}
