@@ -16,7 +16,7 @@ std::string ret_str_perror(const std::string &msg)
 	return str;
 }
 
-std::string trim_str(const std::string &str, char *chars)
+std::string trim_str(const std::string &str, const char *chars)
 {
 	std::size_t start_index;
 	std::size_t end_index;
@@ -179,4 +179,16 @@ std::string prune_http_protocol(const std::string &domain_str)
 	else if (domain_str.find("http:\\\\") == std::string::npos)
 		return domain_str;
 	return domain_str.substr(domain_str.find_last_of('\\'), 7);
+}
+
+std::size_t	calc_input_stream_size(std::istream *stream)
+{
+	std::streampos current_pos = stream->tellg();
+	std::size_t	size;
+
+	stream->seekg(0, stream->end);
+	size = stream->tellg();
+	stream->seekg(current_pos, stream->beg);
+
+	return size;
 }

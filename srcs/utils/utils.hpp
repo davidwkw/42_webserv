@@ -15,6 +15,7 @@
 
 namespace ft
 {
+
 std::string ret_str_error(const std::string &msg);
 std::string trim_str(const std::string &str, char *chars);
 std::string str_char_limit_span(const std::string &str, char open, char close);
@@ -25,6 +26,7 @@ bool getline_CRLF(std::istream& input, std::string& line);
 std::string url_decode(const std::string &encoded_url);
 std::string string_vector_to_string(const std::vector<std::string> &vect);
 std::string prune_http_protocol(const std::string &domain_str);
+std::size_t	calc_input_stream_size(std::istream *stream);
 
 template<bool Cond, class T = void>
 struct enable_if {};
