@@ -22,6 +22,9 @@ class CommonServerConfig : public Config
 		const std::vector<std::string>					index() const;
 		const std::string								root() const;
 		const std::string								autoindex() const;
+		const std::size_t 								client_max_body_size() const;
+		const std::vector<std::string>					redirect() const;
+		const std::vector<std::vector<std::string> >	cgi() const;
 
 	private:
 		Config *_config;

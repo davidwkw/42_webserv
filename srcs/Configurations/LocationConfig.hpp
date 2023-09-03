@@ -33,7 +33,6 @@ class LocationConfig : public CommonServerConfig
 		LocationConfig(Config::directive_container_type directives, const std::string &server_str);
 
 		const std::vector<std::string>	client_body_temp_path() const;
-		const std::vector<std::string>	client_max_body_size() const;
 };
 
 }

@@ -5,11 +5,11 @@ namespace ft
 
 #pragma region Constructor
 
-Request::Request() : _ss(), _request_start_line(), _headers(), _body(), _read_state(Request::READING){}
+Request::Request() : _buffer_stream(), _request_start_line(), _headers(), _body(), _read_state(Request::READING){}
 
-Request::Request(const std::string &request_string) : _ss(), _request_start_line(), _headers(), _body(), _read_state(Request::READING){}
+Request::Request(const std::string &request_string) : _buffer_stream(), _request_start_line(), _headers(), _body(), _read_state(Request::READING){}
 
-Request::Request(const Request &ref) : _ss(ref._ss), _request_start_line(ref._request_start_line), _headers(ref._headers), _body(ref._body)
+Request::Request(const Request &ref) : _buffer_stream(ref._buffer_stream), _request_start_line(ref._request_start_line), _headers(ref._headers), _body(ref._body)
 {
 	*this = ref;
 }
@@ -24,7 +24,7 @@ Request &Request::operator=(const Request &ref)
 {
 	if (this != &ref)
 	{
-		this->_ss = ref._ss;
+		this->_buffer_stream = ref._buffer_stream;
 		this->_request_start_line = ref._request_start_line;
 		this->_headers = ref._headers;
 		this->_body = ref._body;
@@ -96,13 +96,12 @@ void Request::_parse_request_line()
 	std::vector<std::string> request_line_tokens;
 	std::string line;
 
-	ft::getline_CRLF(this->_ss, line);
+	ft::getline_CRLF(this->_buffer_stream, line);
 	request_line_tokens = tokenise_str(line);
 	if (request_line_tokens.size() != 3)
 	{
 		std::runtime_error("Invalid request start line");
 	}
-
 	std::string decoded_uri = url_decode(request_line_tokens[1]);
 
 	this->_request_start_line.method = this->_validate_method(request_line_tokens[0]);
@@ -145,7 +144,7 @@ void Request::_parse_request_headers()
 	std::pair<std::string, std::string> header_field_pair;
 	std::pair<std::map<std::string, std::string>::iterator,bool> insert_return;
 
-	while (getline_CRLF(this->_ss, line) && !line.empty())
+	while (getline_CRLF(this->_buffer_stream, line) && !line.empty())
 	{
 		separator_index = line.find(':');
 		whitespace_index = line.find_first_of(" \n\t\f\r\v");
@@ -162,17 +161,16 @@ void Request::_parse_request_headers()
 		if (insert_return.second == false)
 			this->_handle_duplicate_headers((*insert_return.first).first, (*insert_return.first).second, header_field_pair.second);
     }
-	getline_CRLF(this->_ss, line);
+	getline_CRLF(this->_buffer_stream, line);
 }
 
 void Request::_parse_chunked_request_body()
 {
     std::string line;
-	std::ostringstream oss;
     std::string chunk_size_str;
     std::size_t chunk_size = 0;
 
-	while (getline_CRLF(this->_ss, line) && !line.empty())
+	while (getline_CRLF(this->_buffer_stream, line) && !line.empty())
 	{
         std::istringstream chunkLineStream(line);
         chunkLineStream >> std::hex >> chunk_size_str;
@@ -191,18 +189,16 @@ void Request::_parse_chunked_request_body()
         }
 
         std::vector<char> chunk_data(chunk_size);
-        this->_ss.read(chunk_data.data(), chunk_size);
+        this->_buffer_stream.read(chunk_data.data(), chunk_size);
 
 		if (chunk_size != chunk_data.size())
 		{
 			throw HTTPException(400, "Chunk size and chunk data mismatch");
 		}
 	
-        oss.write(chunk_data.data(), chunk_size);
-		getline_CRLF(this->_ss, line);
+        this->_body.write(chunk_data.data(), chunk_size);
+		getline_CRLF(this->_buffer_stream, line);
     }
-    // Process the complete request
-	this->_body = oss.str();
 }
 
 void Request::_parse_encoded_request_body()
@@ -211,20 +207,13 @@ void Request::_parse_encoded_request_body()
 	// this->_parse_request_headers();
 }
 
-// void Request::_parse_content_type(const std::string *content_type)
-// {
-// 	if (content_type == "application/x-www-form-urlencoded")
-// 		// do something
-// 	else if (content_type == "multipart/form-data")
-// 		// do something
-// }
-
 void Request::_parse_request()
 {
 	this->_parse_request_line();
 	this->_parse_request_headers();
 	if (this->_headers.find("Host") == this->_headers.end())
 		throw HTTPException(400 , "Host field not found.");
+	this->_headers.insert(std::make_pair("Content-Type", "text/plain; charset=US-ASCII"));
 }
 
 #pragma endregion ClassUtility
@@ -251,6 +240,17 @@ std::string Request::get_protocol() const
 	return this->_request_start_line.protocol;
 }
 
+std::size_t Request::get_body_size() const
+{
+	std::size_t body_size = 0;
+	std::size_t header_break_index = this->_buffer_stream.str().find(CRLF CRLF);
+
+	if (header_break_index == std::string::npos)
+		return body_size;
+	body_size = this->_buffer_stream.str().length() - body_size + 5;
+	return body_size;
+}
+
 std::string Request::get_header(const std::string &key) const
 {
 	std::map<std::string, std::string>::mapped_type	value;
@@ -261,9 +261,24 @@ std::string Request::get_header(const std::string &key) const
 	return value;
 }
 
-std::string Request::get_body() const
+std::map<std::string, std::string> Request::get_headers() const
+{
+	return this->_headers;
+}
+
+std::stringstream const &Request::get_body_stream() const
 {
 	return this->_body;
+}
+
+std::stringstream &Request::get_body_stream()
+{
+	return this->_body;
+}
+
+std::string Request::get_body_string() const
+{
+	return this->_body.str();
 }
 
 std::string Request::get_query_param(const std::string key) const
@@ -296,19 +311,21 @@ void Request::set_request_read_state(Request::RequestReadState state)
 
 void Request::append_to_request(const char *string)
 {
-	this->_ss << string;
+	this->_buffer_stream << string;
 }
 
 void Request::process_request()
 {
-	std::size_t header_break_index = this->_ss.str().find(CRLF CRLF);
+	std::size_t header_break_index = this->_buffer_stream.str().find(CRLF CRLF);
 
 	if (header_break_index == std::string::npos)
 		return;
 	try
 	{
 		if (this->_headers.size() == 0)
+		{
 			this->_parse_request();
+		}
 
 		std::map<std::string, std::string>::iterator transfer_encoding;
 		std::map<std::string, std::string>::iterator content_length;
@@ -321,23 +338,25 @@ void Request::process_request()
 			this->_read_state = FINISHED;
 			return;
 		}
-		if ((transfer_encoding != this->_headers.end())
-			&& (header_break_index == this->_ss.str().rfind("0" CRLF CRLF)))
+		if (transfer_encoding != this->_headers.end())
 		{
 			std::vector<std::string> temp = tokenise_str(transfer_encoding->second);
 			if (temp[temp.size() - 1] != "chunked")
+			{
 				throw HTTPException(400, "Chunked was not the last encoding type.");
-			this->_parse_encoded_request_body();
-			this->_read_state = FINISHED;
+			}
+			else if (this->_buffer_stream.str().rfind("0" CRLF CRLF) != std::string::npos)
+			{
+				this->_parse_encoded_request_body();
+				this->_read_state = FINISHED;
+			}
 		}
 		else if ((content_length != this->_headers.end())
-				&& (std::strtoul(content_length->second.c_str(), NULL, 10) == (this->_ss.str().length() - header_break_index + 4)))
+				&& (std::strtoul(content_length->second.c_str(), NULL, 10) == (this->_buffer_stream.str().length() - header_break_index + 4)))
 		{
-			this->_body = this->_ss.str().substr(header_break_index + 4);
+			this->_body << this->_buffer_stream.str().substr(header_break_index + 4);
 			this->_read_state = FINISHED;
 		}
-		// else if (this->_headers.find("Content-Type") != this->_headers.end())
-		// 	this->_parse_content_type(this->_headers["Content-Type"], this->_ss);
 	}
 	catch (const HTTPException& e)
 	{

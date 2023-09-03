@@ -3,15 +3,9 @@
 namespace ft
 {
 
-#pragma region Non-memberVariable
+#pragma region Non-MemberItems
 
 const std::map<int, std::string> Response::reason_phrase_map = Response::_fill_reason_phrase_map();
-
-const std::map<std::string, std::string> Response::mime_type_map = Response::_fill_mime_type_map();
-
-#pragma endregion Non-memberVariable
-
-#pragma region Non-memberFunction
 
 const std::map<int, std::string> Response::_fill_reason_phrase_map()
 {
@@ -85,111 +79,28 @@ const std::map<int, std::string> Response::_fill_reason_phrase_map()
 	return container;
 }
 
-const std::map<std::string, std::string> Response::_fill_mime_type_map()
-{
-	std::map<std::string, std::string> container;
-
-	container["aac"] = "audio/aac";
-	container["abw"] = "application/x-abiword";
-	container["arc"] = "application/octet-stream";
-	container["avi"] = "video/x-msvideo";
-	container["azw"] = "application/vnd.amazon.ebook";
-	container["bin"] = "application/octet-stream";
-	container["bz"] = "application/x-bzip";
-	container["bz2"] = "application/x-bzip2";
-	container["csh"] = "application/x-csh";
-	container["css"] = "text/css";
-	container["csv"] = "text/csv";
-	container["doc"] = "application/msword";
-	container["docx"] = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-	container["eot"] = "application/vnd.ms-fontobject";
-	container["epub"] = "application/epub+zip";
-	container["gif"] = "image/gif";
-	container["htm"] = "text/html";
-	container["html"] = "text/html";
-	container["ico"] = "image/x-icon";
-	container["ics"] = "text/calendar";
-	container["jar"] = "application/java-archive";
-	container["jpeg"] = "image/jpeg";
-	container["jpg"] = "image/jpeg";
-	container["js"] = "application/javascript";
-	container["json"] = "application/json";
-	container["mid"] = "audio/midi";
-	container["midi"] = "audio/midi";
-	container["mp4"] = "video/mp4";
-	container["mpeg"] = "video/mpeg";
-	container["mpkg"] = "application/vnd.apple.installer+xml";
-	container["odp"] = "application/vnd.oasis.opendocument.presentation";
-	container["ods"] = "application/vnd.oasis.opendocument.spreadsheet";
-	container["odt"] = "application/vnd.oasis.opendocument.text";
-	container["oga"] = "audio/ogg";
-	container["ogv"] = "video/ogg";
-	container["ogx"] = "application/ogg";
-	container["otf"] = "font/otf";
-	container["png"] = "image/png";
-	container["pdf"] = "application/pdf";
-	container["ppt"] = "application/vnd.ms-powerpoint";
-	container["pptx"] = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
-	container["rar"] = "application/x-rar-compressed";
-	container["rtf"] = "application/rtf";
-	container["sh"] = "application/x-sh";
-	container["svg"] = "image/svg+xml";
-	container["swf"] = "application/x-shockwave-flash";
-	container["tar"] = "application/x-tar";
-	container["tif"] = "image/tiff";
-	container["tiff"] = "image/tiff";
-	container["ts"] = "application/typescript";
-	container["ttf"] = "font/ttf";
-	container["vsd"] = "application/vnd.visio";
-	container["wav"] = "audio/x-wav";
-	container["weba"] = "audio/webm";
-	container["webm"] = "video/webm";
-	container["webp"] = "image/webp";
-	container["woff"] = "font/woff";
-	container["woff2"] = "font/woff2";
-	container["xhtml"] = "application/xhtml+xml";
-	container["xls"] = "application/vnd.ms-excel";
-	container["xlsx"] = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-	container["xml"] = "application/xml";
-	container["xul"] = "application/vnd.mozilla.xul+xml";
-	container["zip"] = "application/zip";
-	container["3gp"] = "video/3gpp";
-	container["3g2"] = "video/3gpp2";
-	container["7z"] = "application/x-7z-compressed";
-	return container;
-}
-
-
-#pragma endregion Non-memberFunction
+#pragma endregion Non-MemberItems
 
 #pragma region Constructors
 
-Response::Response(const float &protocol, int status_code = 0): _http_protocol(protocol), _status_code(status_code), _body(), _write_state(Response::WRITING){}
+Response::Response() : _http_protocol(), _status_code(), _headers(), _write_state(WRITING), _body_stream(NULL), _message_format(NULL)
+{}
+
+Response::Response(float protocol_version) : _http_protocol(protocol_version), _status_code(), _headers(), _write_state(WRITING), _body_stream(NULL), _message_format(NULL)
+{}
 
 Response::Response(const Response &ref)
 {
 	*this = ref;
 }
 
-Response::~Response(){}
-
-#pragma endregion Constructors
-
-#pragma region OperatorOverloads
-
-Response &Response::operator=(const Response &ref)
+Response::~Response()
 {
-	if (this != &ref)
-	{
-		this->_http_protocol = ref._http_protocol;
-		this->_status_code = ref._status_code;
-		this->_body = ref._body;
-		this->_headers = ref._headers;
-	}
-	return (*this);
+	delete this->_message_format;
+	delete this->_body_stream;
 }
 
-#pragma endregion OperatorOverloads
+#pragma endregion Constructors
 
 #pragma region Getters
 
@@ -198,19 +109,24 @@ Response::ResponseWriteState Response::get_write_state() const
 	return this->_write_state;
 }
 
-std::string	Response::get_body() const
-{
-	return this->_body;
-}
-
 int	Response::get_status_code() const
 {
 	return this->_status_code;
 }
 
-std::string Response::get_string() const
+std::istream const* Response::get_body_stream() const
 {
-	return this->format_response().str();
+	return this->_body_stream;
+}
+
+std::istream *Response::get_body_stream() 
+{
+	return this->_body_stream;
+}
+
+std::istream *Response::get_message_format() const
+{
+	return this->_message_format;
 }
 
 #pragma endregion Getters
@@ -222,29 +138,62 @@ void Response::set_status_code(const int &code)
 	this->_status_code = code;
 }
 
-void Response::set_body(const std::string &str)
+void Response::set_body_stream(std::istream &body_stream)
 {
-	this->_body = str;
+	this->_body_stream = &body_stream;
+}
+
+void Response::set_header(const std::string &key, const std::string &value)
+{
+	this->_headers[key] = value;
+}
+
+void Response::set_header(const std::map<std::string, std::string> &header_map)
+{
+	for (std::map<std::string, std::string>::const_iterator it = header_map.begin(); it != header_map.end(); it++)
+	{
+		this->_headers.insert(*it);
+	}
+}
+
+void Response::remove_header(const std::string &key)
+{
+	this->_headers.erase(key);
 }
 
 #pragma endregion Setters
 
 #pragma region PublicMemberFunctions
 
-std::stringstream Response::format_response() const
+void Response::construct_response_message_format()
 {
-	std::stringstream ss;
+	this->_message_format = new std::stringstream;
 
-	ss << "HTTP/" << this->_http_protocol << " " << this->_status_code << " " << (this->reason_phrase_map.find(this->_status_code)->second) << "\r\n";
+	*this->_message_format << "HTTP/" << this->_http_protocol << " " << this->_status_code << " " << (this->reason_phrase_map.find(this->_status_code)->second) << "\r\n";
 	for (std::map<std::string, std::string>::const_iterator cit = this->_headers.begin(); cit != this->_headers.end(); cit++)
 	{
-		ss << cit->first << ": " << cit->second << "\r\n";
+		*this->_message_format << cit->first << ": " << cit->second << "\r\n";
 	}
-	ss << "\r\n";
-	if (this->_headers.find("Transfer-Encoding") != this->_headers.end())
-		ss << this->_body;
+	*this->_message_format << "\r\n";
+}
 
-	return ss;
+std::string Response::read_response(std::size_t buffer_size)
+{
+	char str[buffer_size];
+
+	if (!this->_message_format)
+	{
+		this->_body_stream->read(str, buffer_size);
+		if (!this->_body_stream)
+		{
+			this->_write_state = FINISHED;
+		}
+	}
+	else
+	{
+		this->_message_format->read(str, buffer_size);
+	}
+	return str;
 }
 
 #pragma endregion PublicMemberFunctions

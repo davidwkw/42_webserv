@@ -13,7 +13,7 @@ Server::~Server()
 	delete this->_socket;
 }
 
-ListeningSocket *Server::get_socket()
+ListeningSocket *Server::get_socket() const
 {
 	return this->_socket;
 }

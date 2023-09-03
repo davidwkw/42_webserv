@@ -7,8 +7,8 @@ const char *LocationConfig::all_directives_array[] =	{
 														"error_log",
 														"index",
 														"error_page",
-														"return",
-														"cgi",
+														"redirect",
+														"cgi_bin",
 														"autoindex",
 														"root",
 														"client_body_temp_path",
@@ -19,8 +19,7 @@ const char *LocationConfig::all_directives_array[] =	{
 
 const char *LocationConfig::normal_directives_array[] =	{
 														"index",
-														"return",
-														"cgi",
+														"redirect",
 														"autoindex",
 														"root",
 														"client_body_temp_path",
@@ -32,6 +31,7 @@ const char *LocationConfig::normal_directives_array[] =	{
 const char *LocationConfig::array_directives_array[] =	{
 														"error_page",
 														"error_log",
+														"cgi_bin",
 														};
 									
 // const char *LocationConfig::block_directives_array[] = 	{
@@ -70,11 +70,6 @@ LocationConfig::LocationConfig(Config::directive_container_type directives, cons
 }
 
 #pragma region Getters
-
-const std::vector<std::string> LocationConfig::client_max_body_size() const
-{
-	return this->find_normal_directive("client_max_body_size");
-}
 
 const std::vector<std::string> LocationConfig::client_body_temp_path() const
 {

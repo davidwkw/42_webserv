@@ -44,9 +44,9 @@ class WebserverConfig : public Config
 		WebserverConfig &operator=(const WebserverConfig &ref);
 		WebserverConfig(const std::string &filename);
 
+		std::map<unsigned int, std::vector<long> >	get_port_server_config_map() const;
 		const std::string 							&path() const;
 		const std::map<long, ServerConfig>			servers() const;
-		std::map<unsigned int, std::vector<long> >	get_port_server_config_map() const;
 };
 
 }

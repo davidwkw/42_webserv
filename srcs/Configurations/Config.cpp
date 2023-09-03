@@ -9,8 +9,8 @@ const char *Config::all_directives_array[] = {
 												"listen",
 												"index",
 												"error_page",
-												"return",
-												"cgi",
+												"redirect",
+												"cgi_bin",
 												"user",
 												"pid",
 												"worker_processes",
@@ -24,8 +24,7 @@ const char *Config::all_directives_array[] = {
 									
 const char *Config::normal_directives_array[] = {
 													"index",
-													"return",
-													"cgi",
+													"redirect",
 													"user",
 													"pid",
 													"worker_processes",
@@ -43,6 +42,7 @@ const char *Config::array_directives_array[] =	{
 													"server_name",
 													"listen",
 													"allow",
+													"cgi_bin",
 													"deny"
 												};
 
@@ -206,7 +206,7 @@ std::multimap<std::string, std::string> Config::parse_block_directives(const std
 	{
 		if (str[delimiter_index] == '}')
 		{
-			throw std::runtime_error("[WebserverConfig]: Found } before {");
+			throw std::runtime_error("[Config]: Found } before {");
 		}
 		start_index = str.find_last_of('}', delimiter_index);
 		start_index %= std::string::npos;

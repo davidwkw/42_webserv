@@ -5,14 +5,16 @@ namespace ft
 
 #pragma region Constructors
 
-WebServer::WebServer(const std::string &conf_path) : _webserver_config(conf_path), _max_fd(0)
+WebServer::WebServer(const std::string &conf_path) : _webserver_config(conf_path)
 {
+    FD_ZERO(&this->_all_fds);
     FD_ZERO(&this->_read_fds);
     FD_ZERO(&this->_write_fds);
 }
 
-WebServer::WebServer(const WebserverConfig &config) : _webserver_config(config), _max_fd(0)
+WebServer::WebServer(const WebserverConfig &config) : _webserver_config(config)
 {
+    FD_ZERO(&this->_all_fds);
     FD_ZERO(&this->_read_fds);
     FD_ZERO(&this->_write_fds);
 }
@@ -44,46 +46,45 @@ void WebServer::_initialise_socket_fd()
     }
 }
 
-void WebServer::_reset_fd_sets()
-{ 
-    FD_ZERO(&this->_read_fds);  
-    FD_ZERO(&this->_write_fds);
+void WebServer::_reinitialize_fd_sets()
+{   
+    this->_read_fds = this->_write_fds = this->_all_fds;
 }
 
-void WebServer::_append_listen_sockets_to_readfd()
+void WebServer::_append_listen_sockets_to_allfd(int &max_fd)
 {
     for (std::map<unsigned int, HTTPServer>::iterator it = this->_port_http_server_map.begin(); it != this->_port_http_server_map.end(); it++)
     {
         int socket_fd = it->second.get_listen_socket_fd();
 
-        FD_SET(socket_fd, &this->_read_fds);
-        if (socket_fd > this->_max_fd)
-            this->_max_fd = socket_fd;
+        FD_SET(socket_fd, &this->_all_fds);
+        if (socket_fd > max_fd)
+            max_fd = socket_fd;
     }
 }
 
-void WebServer::_append_read_sockets_to_readfd()
+void WebServer::_append_read_sockets_to_readfd(int &max_fd)
 {
     for (std::map<unsigned int, HTTPServer>::iterator it = this->_port_http_server_map.begin(); it != this->_port_http_server_map.end(); it++)
     {
         for (std::list<int>::iterator it2 = it->second.get_client_read_fds().begin(); it2 != it->second.get_client_read_fds().end(); it2++)
         {
             FD_SET(*it2, &this->_read_fds);
-            if (*it2 > this->_max_fd)
-                this->_max_fd = *it2;
+            if (*it2 > max_fd)
+                max_fd = *it2;
         }
     }
 }
 
-void WebServer::_append_write_sockets_to_writefd()
+void WebServer::_append_write_sockets_to_writefd(int &max_fd)
 {
     for (std::map<unsigned int, HTTPServer>::iterator it = this->_port_http_server_map.begin(); it != this->_port_http_server_map.end(); it++)
     {
         for (std::list<int>::iterator it2 = it->second.get_client_write_fds().begin(); it2 != it->second.get_client_write_fds().end(); it2++)
         {
             FD_SET(*it2, &this->_write_fds);
-            if (*it2 > this->_max_fd)
-                this->_max_fd = *it2;
+            if (*it2 > max_fd)
+                max_fd = *it2;
         }
     }
 }
@@ -99,8 +100,6 @@ void WebServer::_accept_incoming_connections()
 
 void WebServer::_perform_socket_io()
 {
-    int status = 0;
-
     for (std::map<unsigned int, HTTPServer>::iterator it = this->_port_http_server_map.begin(); it != this->_port_http_server_map.end(); it++)
     {
         for (std::list<int>::iterator it2 = it->second.get_client_read_fds().begin(); it2 != it->second.get_client_read_fds().end(); it2++)
@@ -121,19 +120,23 @@ void WebServer::_perform_socket_io()
 
 void WebServer::run()
 {   
-    int activity = 0;
+    int             activity = 0;
+    struct timeval  timeout = {};
+    int             server_max_fd = 0;
+    int             max_fd = 0;
 
     this->_initialise_socket_fd();
+    this->_append_listen_sockets_to_allfd(server_max_fd);
 
     while(true)  
-    {  
-        this->_reset_fd_sets();
-        this->_append_listen_sockets_to_readfd();
-        this->_append_read_sockets_to_readfd();
-        this->_append_write_sockets_to_writefd();
-        // listen to SIGCHLD, CGI
-        // signal(SIGCHLD, handle_sigchld);
-        activity = select(this->_max_fd + 1 , &this->_read_fds , &this->_write_fds , NULL , NULL);
+    {
+        timeout.tv_sec = TIMEOUT_SECONDS;
+        timeout.tv_usec = TIMEOUT_MICROSECONDS;
+        max_fd = server_max_fd;
+        this->_reinitialize_fd_sets();
+        this->_append_read_sockets_to_readfd(max_fd);
+        this->_append_write_sockets_to_writefd(max_fd);
+        activity = select(max_fd + 1 , &this->_read_fds , &this->_write_fds , NULL , &timeout);
         if ((activity < 0) && (errno != EINTR))  
         {  
             throw std::runtime_error("Select error");

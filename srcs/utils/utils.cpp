@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include <string>
+#include <algorithm>
 
 std::string ret_str_perror(const std::string &msg)
 {
@@ -29,7 +30,7 @@ std::string trim_str(const std::string &str, const char *chars)
 	return str.substr(start_index, end_index - start_index + 1);
 }
 
-std::vector<std::string> tokenise_str(const std::string & str, char c = ' ')
+std::vector<std::string> tokenise_str(const std::string &str, char c = ' ')
 {
 	std::string temp;
 	std::vector<std::string> ret_vector;
@@ -181,14 +182,60 @@ std::string prune_http_protocol(const std::string &domain_str)
 	return domain_str.substr(domain_str.find_last_of('\\'), 7);
 }
 
-std::size_t	calc_input_stream_size(std::istream *stream)
+std::size_t	calc_input_stream_size(std::istream &stream)
 {
-	std::streampos current_pos = stream->tellg();
+	std::streampos current_pos = stream.tellg();
 	std::size_t	size;
 
-	stream->seekg(0, stream->end);
-	size = stream->tellg();
-	stream->seekg(current_pos, stream->beg);
+	stream.seekg(0, stream.end);
+	size = stream.tellg();
+	stream.seekg(current_pos, stream.beg);
 
 	return size;
+}
+
+std::string size_t_to_string(std::size_t val)
+{
+	std::ostringstream oss;
+
+	oss << val;
+
+	return oss.str();
+}
+
+std::string extract_file_extension(const std::string &filename)
+{
+	std::size_t extension_begin_index;
+
+	if ((extension_begin_index = filename.find_last_of('.')) == std::string::npos)
+	{
+		throw std::runtime_error("Missing delimiter for beginning of extension");
+	}
+	return filename.substr(extension_begin_index + 1);
+}
+
+void str_to_uppercase(std::string &str)
+{
+	std::transform(str.begin(), str.end(), str.begin(), toupper);
+}
+
+void str_replace_char(std::string &str, char old_char, char new_char)
+{
+	for (std::string::iterator it = str.begin(); it != str.end(); it++)
+	{
+		if (*it == old_char)
+		{
+			*it = new_char;
+		}
+	}
+}
+
+std::string extract_file_extension(const std::string &filename)
+{
+	std::size_t dot_index = filename.find_last_of('.');
+	if (dot_index == std::string::npos)
+	{
+		return "";
+	}
+	return filename.substr(dot_index + 1);
 }

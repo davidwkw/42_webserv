@@ -29,8 +29,8 @@ HTTPServer::~HTTPServer()
 
 void HTTPServer::_assign_config_to_client(const int &fd)
 {
-	bool config_found = false;
-	long server_config_index = 0;
+	bool 		config_found = false;
+	long 		server_config_index = 0;
 	std::string origin_domain = this->_fd_to_client_map[fd].get_request().get_header("Host");
 
 	for (std::vector<ServerConfig>::iterator it = this->_server_configs.begin(); it != this->_server_configs.end(); it++)
@@ -46,7 +46,7 @@ void HTTPServer::_assign_config_to_client(const int &fd)
 	if (!config_found)
 		server_config_index = 0;
 	
-	this->_fd_to_client_map[fd].set_server_config(this->_server_configs[server_config_index]);
+	this->_fd_to_client_map[fd].set_server_config(&this->_server_configs[server_config_index]);
 }
 
 #pragma endregion ClassUtility
@@ -56,11 +56,10 @@ void HTTPServer::accept_connection()
 	int accept_fd = 0;
 
 	struct sockaddr_in address = this->_socket->get_address();
-	int addrlen = sizeof(address);
-	accept_fd = accept(this->_socket->get_sock(), (struct sockaddr *)& address, (socklen_t *)&addrlen);
+	socklen_t addrlen = sizeof(address);
+	accept_fd = accept(this->_socket->get_sock(), (struct sockaddr *)& address, &addrlen);
 	if (accept_fd < 0)
 	{
-		// need to somehow handle this, this will kill the server immediately
 		throw std::runtime_error(ret_str_error("Failure to accept incoming connection"));
 	}
 	insert_into_client_read_fds(accept_fd);
@@ -75,7 +74,7 @@ void HTTPServer::handle_request(const int &fd)
 		close(fd);
 		return;
 	}
-	if (this->_fd_to_client_map[fd].get_process_state() == Client::PROCESSING_RESPONSE)
+	if (this->_fd_to_client_map[fd].get_process_state() == Client::VALIDATING_REQUEST)
 	{
 		insert_into_client_write_fds(fd);
 		remove_from_client_read_fd(fd);
@@ -84,7 +83,10 @@ void HTTPServer::handle_request(const int &fd)
 
 void HTTPServer::handle_response(const int &fd)
 {
-	this->_assign_config_to_client(fd);
+	if (this->_fd_to_client_map[fd].get_server_config() == NULL)
+	{
+		this->_assign_config_to_client(fd);
+	}
 	this->_fd_to_client_map[fd].handle_response();
 	if (this->_fd_to_client_map[fd].get_process_state() == Client::FINISHED_PROCESSING)
 	{
@@ -123,7 +125,6 @@ unsigned int HTTPServer::get_port() const
 void HTTPServer::insert_into_client_read_fds(const int fd)
 {
 	this->_client_read_fds.push_back(fd);
-
 }
 
 void HTTPServer::insert_into_client_write_fds(const int fd)

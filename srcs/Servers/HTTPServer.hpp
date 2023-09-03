@@ -29,9 +29,9 @@ class HTTPServer : public Server
 		void				handle_request(const int &fd);
 		void				handle_response(const int &fd);
 
-		int					get_listen_socket_fd() const;
 		std::list<int>		get_client_write_fds() const;
 		std::list<int>		get_client_read_fds() const;
+		int					get_listen_socket_fd() const;
 		unsigned int		get_port() const;
 
 		void				insert_into_client_read_fds(const int fd);

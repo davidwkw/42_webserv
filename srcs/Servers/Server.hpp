@@ -18,7 +18,7 @@ class Server
 		Server(int domain, int service, int protocol , unsigned int port, u_long interface, int backlog);
 		virtual ~Server();
 	
-		ListeningSocket *get_socket();
+		ListeningSocket *get_socket() const;
 };
 
 }

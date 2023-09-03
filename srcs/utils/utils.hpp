@@ -26,7 +26,11 @@ bool getline_CRLF(std::istream& input, std::string& line);
 std::string url_decode(const std::string &encoded_url);
 std::string string_vector_to_string(const std::vector<std::string> &vect);
 std::string prune_http_protocol(const std::string &domain_str);
-std::size_t	calc_input_stream_size(std::istream *stream);
+std::size_t	calc_input_stream_size(std::istream &stream);
+std::string size_t_to_string(std::size_t val);
+std::string extract_file_extension(const std::string &filename);
+std::string str_to_uppercase(std::string str);
+void str_replace_char(std::string &str, char old_char, char new_char);
 
 template<bool Cond, class T = void>
 struct enable_if {};

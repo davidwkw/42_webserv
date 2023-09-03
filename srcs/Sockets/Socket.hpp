@@ -20,11 +20,12 @@ namespace ft
 			Socket(int domain, int service, int protocol, unsigned int port, u_long interface);
 			Socket(const struct addrinfo &addr);
 			~Socket();
-			virtual int connect_to_network(int sock, struct sockaddr_in address) = 0;
-			void test_connection(int);
 
-			struct sockaddr_in get_address() const;
-			int get_sock() const;
+			void		test_connection(int);
+			virtual int connect_to_network(int sock, struct sockaddr_in address) = 0;
+
+			struct sockaddr_in	get_address() const;
+			int					get_sock() const;
 	};
 }
 

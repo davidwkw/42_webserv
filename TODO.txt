@@ -1,3 +1,4 @@
-refactor request to parse body into temp file pointed to by client_body_temp_path
-limit max header size
-something isn't right with config listen() and ports() after changing format to port only 
+cgi
+upload
+
+set default error pages when none have been set up

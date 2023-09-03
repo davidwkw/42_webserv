@@ -18,9 +18,7 @@ Socket::Socket(int domain, int service, int protocol, unsigned int port, u_long 
 	test_connection(_sock_fd);
 }
 
-Socket::Socket(const struct addrinfo &addr)
-{
-}
+Socket::Socket(const struct addrinfo &addr){}
 
 Socket::~Socket()
 {
