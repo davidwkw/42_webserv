@@ -4,7 +4,7 @@
 #include <arpa/inet.h>
 #include "../includes/webserv.hpp"
 
-int	main(int argc, char **argv, char **envp)
+int	main(int argc, char **argv)
 {
 	if (argc > 2)
 	{

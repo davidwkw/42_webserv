@@ -3,13 +3,9 @@
 namespace ft
 {
 
-#pragma region Non-memberVariable
+extern char **environ;
 
 const std::map<std::string, std::string> Client::mime_type_map = Client::_fill_mime_type_map();
-
-#pragma endregion Non-memberVariable
-
-#pragma region Non-memberFunction
 
 const std::map<std::string, std::string> Client::_fill_mime_type_map()
 {
@@ -85,39 +81,56 @@ const std::map<std::string, std::string> Client::_fill_mime_type_map()
 	return container;
 }
 
-#pragma endregion Non-memberFunction
-
-#pragma region Constructors
-
-Client::Client(int fd, unsigned int buffer_size) : _fd(fd), _buffer_size(buffer_size), _state(PROCESSING_REQUEST), _request(), _server_config(NULL), _response(HTTP_PROTOCOL), _cgi(NULL), _content(NULL){}
-
-Client::~Client()
+Client::Client(int fd, std::size_t buffer_size) : _state(PROCESSING_REQUEST), _fd(fd), _common_server_config(NULL), _server_config(NULL), _request(), _response(HTTP_PROTOCOL),_buffer_size(buffer_size), _endpoint(), _dir_path(), _cgi(NULL), _client_port(), _client_ip(), _server_port(), _server_ip()
 {
-	delete this->_cgi;
-	delete this->_content;
+	struct sockaddr_in	client_addr = {};
+	socklen_t			client_addr_len = sizeof(client_addr);
+	char 				client_ip[INET_ADDRSTRLEN];
+
+	if (getpeername(this->_fd, (struct sockaddr *)&client_addr, &client_addr_len) == -1)
+	{
+		throw std::runtime_error("Error with getpeername()");
+	}
+	if (inet_ntop(AF_INET, &client_addr, client_ip, INET_ADDRSTRLEN) == NULL)
+	{
+		throw std::runtime_error("Error with client inet_ntop()");
+	}
+	this->_client_port = ntohs(client_addr.sin_port);
+	this->_client_ip = client_ip;
+
+	struct sockaddr_in	server_addr = {};
+	socklen_t			server_addr_len = sizeof(server_addr);
+	char server_ip[INET_ADDRSTRLEN];
+
+	if (getsockname(this->_fd, (struct sockaddr *)&server_addr, &server_addr_len) == -1)
+	{
+		throw std::runtime_error("Error with getsockname()");
+	}
+
+	if (inet_ntop(AF_INET, &server_addr, server_ip, INET_ADDRSTRLEN) == NULL)
+	{
+		throw std::runtime_error("Error with server inet_ntop()");
+	}
+
+	this->_server_port = ntohs(server_addr.sin_port);
+	this->_server_ip = server_ip;
 }
 
-#pragma endregion Constructors
+Client::~Client(){}
 
-#pragma region ClassUtilities
-
-void Client::_handle_method(const std::string &endpoint)
+void Client::_handle_method()
 {
-	std::string dir_path;
-	std::string root;
-
-	root = this->_common_server_config->root();
-	dir_path = root + (endpoint.empty() ? "/" : endpoint); 
 	if (this->_request.get_method() == "GET")
-		this->_handle_get(dir_path + this->_request.get_target());
+		this->_handle_get(this->_dir_path + this->_request.get_target_file());
 	else if (this->_request.get_method() == "POST")
-		this->_handle_post(dir_path);
+		this->_handle_post(this->_dir_path);
 	else if (this->_request.get_method() == "DELETE")
-		this->_handle_delete(dir_path + this->_request.get_target());
+		this->_handle_delete(this->_dir_path + this->_request.get_target_file());
 }
 
-void Client::_match_location(std::string endpoint_str)
+void Client::_match_location()
 {
+	std::string endpoint_str = this->_request.get_target(); // /destination/
 	std::size_t slash_index = endpoint_str.find_last_of('/');
 
 	while (slash_index != std::string::npos)
@@ -125,12 +138,13 @@ void Client::_match_location(std::string endpoint_str)
 		if (this->_server_config->locations().find(endpoint_str) != this->_server_config->locations().end())
 		{
 			this->_endpoint = endpoint_str;
+			return;
 		}
 		if (slash_index == 0)
 		{
 			break;
 		}
-		slash_index = endpoint_str.find_last_of('/', slash_index - 1); // this is also broken
+		slash_index = endpoint_str.find_last_of('/', slash_index - 1);
 		endpoint_str = endpoint_str.substr(0, slash_index + 1);
 	}
 	this->_endpoint = "";
@@ -151,8 +165,10 @@ std::string Client::_generate_dir_content_list_html(std::string dir_path)
 	DIR					*folder;
 
     folder = opendir(dir_path.c_str());
-    if(folder == NULL)
+    if (folder == NULL)
+	{
         throw std::runtime_error("Couldn't open dir " + dir_path);
+	}
 	while ((entry = readdir(folder)) != NULL)
 	{
 		std::string	link;
@@ -199,21 +215,20 @@ void Client::_handle_get(const std::string &file_path)
 	std::string											file_extension;
 	std::map<std::string, std::string>::const_iterator	mime_type_iterator;
 
-	if (!this->_request.get_target().empty())
+	if (!this->_request.get_target_file().empty()) // destination with no file, this is checked instead of file_path because file_path already has root and etc appended
 	{
 		std::ifstream *temp_stream = new std::ifstream;
 
 		temp_stream->open(file_path.c_str());
 		if (!temp_stream->is_open())
 			throw HTTPException(404, "File not found");
-		file_extension = extract_file_extension(this->_request.get_target());
+		file_extension = extract_file_extension(this->_request.get_target_file());
 		if ((mime_type_iterator = Client::mime_type_map.find(file_extension)) != Client::mime_type_map.end())
 		{
 			this->_response.set_header("Content-Type", mime_type_iterator->second);
 		}
-		this->_response.set_header("Content-Length", size_t_to_string(calc_input_stream_size(*temp_stream)));
-		this->_response.set_body_stream(*temp_stream);
-		this->_content = static_cast<std::istream *>(temp_stream);
+		this->_response.set_header("Content-Length", to_string(calc_input_stream_size(*temp_stream)));
+		this->_response.set_body_stream(temp_stream);
 	}
 	else if (this->_server_config->autoindex() == "on")
 	{
@@ -221,9 +236,8 @@ void Client::_handle_get(const std::string &file_path)
 
 		this->_handle_auto_index(file_path, *temp_stream);
 		this->_response.set_header("Content-Type", "text/html"); // had to hardcode..
-		this->_response.set_header("Content-Length", size_t_to_string(calc_input_stream_size(*temp_stream)));
-		this->_response.set_body_stream(*temp_stream);
-		this->_content = static_cast<std::istream *>(temp_stream);
+		this->_response.set_header("Content-Length", to_string(calc_input_stream_size(*temp_stream)));
+		this->_response.set_body_stream(temp_stream);
 	}
 	else
 	{
@@ -248,50 +262,75 @@ void Client::_handle_get(const std::string &file_path)
 			delete temp_stream;
 			throw HTTPException(404, "File not found");
 		}
-		this->_response.set_header("Content-Length", size_t_to_string(calc_input_stream_size(*temp_stream)));
-		this->_response.set_body_stream(*temp_stream);
-		this->_content = static_cast<std::istream *>(temp_stream);
+		this->_response.set_header("Content-Length", to_string(calc_input_stream_size(*temp_stream)));
+		this->_response.set_body_stream(temp_stream);
 	}
 	this->_response.set_status_code(200);
 }
 
-void Client::_handle_post(const std::string &dir_path)
+// example post Request
+// POST / HTTP/1.1
+// Content-Type: multipart/form-data; boundary=--------------------------244862981367507482243554
+// User-Agent: PostmanRuntime/7.33.0
+// Accept: */*
+// Cache-Control: no-cache
+// Postman-Token: e8856188-9a51-44a2-a4e3-c8d6a18513cb
+// Host: localhost:5000
+// Accept-Encoding: gzip, deflate, br
+// Connection: keep-alive
+// Content-Length: 213
+
+// ----------------------------244862981367507482243554
+// Content-Disposition: form-data; name=""; filename="testfile.txt"
+// Content-Type: text/plain
+
+// abc1234
+// ----------------------------244862981367507482243554--
+
+// shove everything into some kind of handler class, client has too many responsibilities at this point
+// class RequestBody;?
+
+
+void Client::_handle_post(const std::string &dir_path) // post still doesn't work... ignore for now, 
 {
-	if (this->_request.get_target().length() > 0)
+	std::string							content_type_line;
+	std::string							content_type;
+	std::string							boundary_key_value_string;
+	std::pair<std::string, std::string>	boundary_key_value_pair;
+	std::size_t boundary_begin_pos;
+	std::size_t	boundary_end_pos;
+
+	content_type_line = this->_request.get_header("Content-Type");
+	trim_str(content_type_line, " \t\r\n");
+	content_type = content_type_line.substr(0, content_type_line.find_first_of(';'));
+	if (content_type != "multipart/form-data")
 	{
-		throw HTTPException(501, "Not implemented");
+		throw HTTPException(501, "Unsupported content-type");
 	}
-	// std::string							content_type_line;
-	// std::string							content_type;
-	// std::string							boundary_key_value_string;
-	// std::pair<std::string, std::string>	boundary_key_value_pair;
+	boundary_key_value_string = trim_str(content_type_line.substr(content_type_line.find_first_of(';') + 1), " \t");
+	try
+	{	
+		boundary_key_value_pair = extract_key_value_pair(boundary_key_value_string, '=');
+		boundary_key_value_pair.second = trim_str(boundary_key_value_pair.second, "\"");
+	}
+	catch(const std::exception& e)
+	{
+		throw HTTPException(400, "Malformed request");;
+	}
+	if (boundary_key_value_pair.first != "boundary")
+	{
+		throw HTTPException(400, "Malformed request");
+	}
+	boundary_begin_pos = this->_request.get_body_string().find(boundary_key_value_pair.second);
+	boundary_end_pos = this->_request.get_body_string().find(boundary_key_value_pair.second, boundary_begin_pos + boundary_key_value_pair.second.length() + 1);
 
-	// content_type_line = this->_request.get_header("Content-Type");
-	// trim_str(content_type_line, " \t\r\n");
-	// content_type = content_type_line.substr(0, content_type_line.find_first_of(';'))
-	// if (content_type != "multipart/form-data");
-	// {
-	// 	throw HTTPException(501, "Unsupported content-type");
-	// }
-	// boundary_key_value_string = trim_str(content_type_line.substr(content_type_line.find_first_of(';') + 1), " \t");
-	// try
-	// {	
-	// 	boundary_key_value_pair = extract_key_value_pair(boundary_key_value_string, '=');
-	// 	boundary_key_value_pair.second = trim_str(boundary_key_value_pair.second, "\"");
-	// }
-	// catch(const std::exception& e)
-	// {
-	// 	throw HTTPException(400, "Malformed request");;
-	// }
-	// if (boundary_key_value_pair.first != 'boundary')
-	// {
-	// 	throw HTTPException(400, "Malformed request");
-	// }
-
-
-	// std::ofstream outfile;
-
-	// outfile.open((dir_path));
+	std::ofstream	outfile;
+	std::string		destination_path;
+	
+	// what happens when file already exists?
+	// destination_path = dir_path + this->_request.??? how to extract file name?
+	outfile.open(dir_path.c_str()); // dir_path is just the plain directory path
+	outfile << this->_request.get_body_string().substr(boundary_begin_pos + boundary_key_value_pair.second.length() + 1, boundary_end_pos - 1);
 	this->_response.set_status_code(201);
 }
 
@@ -313,30 +352,30 @@ void Client::_handle_exception()
 {
 	std::string								file_name = "";
 	std::vector<std::vector<std::string> >	error_pages;
-	std::ostringstream						oss;
+	std::string								status_code;
 	std::ifstream							*temp_stream = new std::ifstream;
 
-	oss << this->_response.get_status_code();
+	status_code =  to_string(this->_response.get_status_code());
 	error_pages = this->_common_server_config->error_page();
 	for (std::vector<std::vector<std::string> >::const_iterator cit = error_pages.begin(); cit != error_pages.end(); cit++)
 	{
 		for (std::size_t index = 0; index < (cit->size() - 1); index++)
 		{
-			if (cit->at(index) == oss.str())
+			if (cit->at(index) == status_code)
 			{
-				file_name = cit->at(index);
+				file_name = cit->at(cit->size());
 				break;
 			}
 		}
-		if (!file_name.empty())
-			break;
 	}
 	if (file_name.empty())
-		return;
-	temp_stream->open((ERROR_PAGE_DIR + file_name).c_str());
+	{
+		file_name = std::string(DEFAULT_ERROR_PAGE_DIR) + "500.html"; // default for 500.html for everything.
+	}
+	temp_stream->open((std::string(DEFAULT_ERROR_PAGE_DIR) + file_name).c_str());
 	if (!temp_stream->is_open())
 	{
-		std::runtime_error("Couldn't open exception file");
+		std::runtime_error("Couldn't open exception file"); // this kills the server 
 	}
 
 	std::string file_extension;
@@ -347,8 +386,7 @@ void Client::_handle_exception()
 	{
 		this->_response.set_header("Content-Type", mime_type_iterator->second);
 	}
-	this->_response.set_body_stream(*temp_stream);
-	this->_content = static_cast<std::istream *>(temp_stream);
+	this->_response.set_body_stream(temp_stream);
 }
 
 void Client::_handle_redirect()
@@ -361,61 +399,57 @@ void Client::_handle_redirect()
 	this->_response.set_status_code(status_code);
 }
 
-char **Client::_prepare_cgi_meta_variables()
-{
-	std::vector<std::string> meta_variables_container;
-	std::size_t i = 0;
-	char **meta_variables = new char *[meta_variables_container.size() + 1];
-
-	for (std::vector<std::string>::iterator it = meta_variables_container.begin(); it != meta_variables_container.end(); it++)
-	{
-		meta_variables[i++] = const_cast<char *>(it->c_str());
-	}
-	meta_variables[meta_variables_container.size()] = NULL;
-	return meta_variables;
-}
-
 void Client::_configure_common_config()
 {
 	if (this->_endpoint.empty())
 	{
-		this->_common_server_config = static_cast<const CommonServerConfig *>(this->_server_config);
+		this->_common_server_config = static_cast<CommonServerConfig *>(this->_server_config);
 	}
 	else
 	{
-		this->_common_server_config = static_cast<const CommonServerConfig *>(&this->_server_config->locations().find(this->_endpoint)->second);
+		this->_common_server_config = static_cast<CommonServerConfig *>(const_cast<LocationConfig *>(&this->_server_config->locations().find(this->_endpoint)->second));
 	}
 }
 
-// std::string Client::_translate_binary_path()
-// {
-// 	// std::string	;
+std::string Client::_get_cgi_path_info()
+{
+	std::size_t target_pos;
+	
+	target_pos = this->_request.get_target().find(this->_request.get_target_file());
+	return this->_request.get_target().substr(target_pos + this->_request.get_target_file().length());
+}
 
-// 	return ;
-// }
-
-bool Client::_is_target_cgi()
+std::string Client::_translate_binary_path()
 {
 	std::string file_extension;
+	std::string	binary_path;
+	std::size_t	relative_path_prefix_pos;
 
-	file_extension = extract_file_extension(this->_request.get_target());
+	file_extension = extract_file_extension(this->_request.get_target_file());
+	binary_path = this->_extract_binary_path_from_config(file_extension);
 
-	for (std::vector<std::vector<std::string> >::const_iterator it = this->_common_server_config->cgi().begin(); it != this->_common_server_config->cgi().end(); it++)
+	if (binary_path.length() == 0) // failed to match
 	{
-		if (file_extension == (*it)[0])
-		{
-			return true;
-		}
+		throw HTTPException(404, "Couldn't find binary path"); // technically shouldn't be able to trigger
 	}
-	return false;
+	relative_path_prefix_pos = binary_path.find("./");
+	if (relative_path_prefix_pos == std::string::npos) // found absolute path
+	{
+		return binary_path;
+	}
+	if (relative_path_prefix_pos > 0) // misplaced relative prefix
+	{
+		throw HTTPException(404, "Script not found");
+	}
+	if (binary_path.substr(2).length() == 0) // path of the file is itself?
+	{
+		binary_path = this->_dir_path + this->_request.get_target_file();
+	}
+	return binary_path;
 }
 
-std::string Client::_get_cgi_binary()
+std::string Client::_extract_binary_path_from_config(const std::string &file_extension)
 {
-	std::string file_extension;
-
-	file_extension = extract_file_extension(this->_request.get_target());
-
 	for (std::vector<std::vector<std::string> >::const_iterator it = this->_common_server_config->cgi().begin(); it != this->_common_server_config->cgi().end(); it++)
 	{
 		if (file_extension == (*it)[0])
@@ -423,38 +457,85 @@ std::string Client::_get_cgi_binary()
 			return (*it)[1];
 		}
 	}
-	return this->_request.get_target();
+	return "";
+}
+
+bool Client::_is_target_cgi()
+{
+	std::string file_extension;
+	std::string	binary_path;
+
+	file_extension = extract_file_extension(this->_request.get_target_file());
+	binary_path = _extract_binary_path_from_config(file_extension);
+
+	return (binary_path.length() > 0);
 }
 
 void Client::_initialize_cgi()
 {
-	std::string	binary_path;
+	std::string					binary_path;
+	std::vector<std::string>	args;
 
 	binary_path = this->_translate_binary_path();
+	
+	this->_cgi.reset(new CGI());
+	this->_cgi->set_binary(binary_path);
+	if (binary_path.find("./") == std::string::npos)
+	{
+		this->_cgi->add_arg(this->_dir_path + this->_request.get_target_file());
+	}
+	else
+	{
+		this->_cgi->add_arg("");
+	}
 
-	this->_cgi = new CGI(binary_path);
+	for (char **envp = environ; *envp; envp++)
+	{
+		this->_cgi->add_server_envp(*envp);
+	}
+
+	this->_cgi->add_envp("PATH_INFO", this->_get_cgi_path_info());
+	this->_cgi->add_envp("AUTH_TYPE", "");
+	this->_cgi->add_envp("CONTENT_LENGTH", to_string(this->_request.get_body_size()));
+	this->_cgi->add_envp("CONTENT_TYPE", this->_request.get_header("Content-Type"));
+	this->_cgi->add_envp("GATEWAY_INTERFACE", "CGI/" + to_string(CGI_GATEWAY_INTERFACE_VERSION));
+	this->_cgi->add_envp("QUERY_STRING", this->_request.get_query_string());
+	this->_cgi->add_envp("REMOTE_ADDR", this->_client_ip);
+	this->_cgi->add_envp("REMOTE_HOST", this->_request.get_header("Host"));
+	this->_cgi->add_envp("REQUEST_METHOD", this->_request.get_method());
+	this->_cgi->add_envp("SCRIPT_NAME", this->_request.get_target_file());
+	this->_cgi->add_envp("SERVER_NAME", this->_server_ip);
+	this->_cgi->add_envp("SERVER_PORT", to_string(this->_server_port));
+	this->_cgi->add_envp("SERVER_PROTOCOL", "HTTP/" + to_string(HTTP_PROTOCOL));
+	this->_cgi->add_envp("SERVER_SOFTWARE", SERVER_NAME + to_string(SOFTWARE_VERSION));
+
 	for (std::map<std::string, std::string>::iterator it = this->_request.get_headers().begin(); it != this->_request.get_headers().end(); it++)
 	{
-		this->_cgi->add_envp(it->first, it->second);
+		if (it->first == "Content-Length" || it->first == "Content-Type")
+		{
+			continue;
+		}
+		this->_cgi->add_envp(it->first, "HTTP_" + it->second);
 	}
 	this->_cgi->execute();
 }
-
-#pragma endregion ClassUtilities
-
-#pragma region Getters
 
 int	Client::get_fd() const
 {
 	return this->_fd;
 }
 
-Request	Client::get_request() const
+Request const &Client::get_request() const
 {
 	return this->_request;
 }
 
-Response Client::get_response() const
+Request &Client::get_request()
+{
+	return this->_request;
+}
+
+Response &Client::get_response()
 {
 	return this->_response;
 }
@@ -469,9 +550,25 @@ ServerConfig const* Client::get_server_config() const
 	return this->_server_config;
 }
 
-#pragma endregion Getters
+std::string	Client::get_server_ip() const
+{
+	return this->_server_ip;
+}
 
-#pragma region Setters
+std::string	Client::get_client_ip() const
+{
+	return this->_client_ip;
+}
+
+int	Client::get_server_port() const
+{
+	return this->_server_port;
+}
+
+int	Client::get_client_port() const
+{
+	return this->_client_port;
+}
 
 void Client::set_server_config(ServerConfig *server_config)
 {
@@ -483,20 +580,18 @@ void Client::set_process_state(const ProcessState &state)
 	this->_state = state;
 }
 
-#pragma endregion Setters
-
-#pragma region PublicMemberMethods
-
 int Client::handle_request()
 {
-	char buffer[this->_buffer_size + 1] = {0};
+	std::auto_ptr<char> buffer(new char[this->_buffer_size + 1]);
 	std::size_t	bytes_read = 0;
 
-	if ((bytes_read = recv(this->_fd, buffer, BUFFER_SIZE, MSG_NOSIGNAL)) <= 0)
+
+	std::memset(buffer.get(), 0, this->_buffer_size + 1);
+	if ((bytes_read = recv(this->_fd, buffer.get(), BUFFER_SIZE, MSG_NOSIGNAL)) <= 0)
 	{
 		return bytes_read;
 	}
-	this->_request.append_to_request(buffer);
+	this->_request.append_to_request(buffer.get());
 	try
 	{
 		if (this->_request.get_body_size() > this->_common_server_config->client_max_body_size())
@@ -507,6 +602,7 @@ int Client::handle_request()
 	{
 		this->_response.set_status_code(e.get_status_code());
 	}
+
 	if (this->_request.get_request_read_state() == Request::FINISHED || this->_response.get_status_code() > 0)
 	{
 		this->_state = VALIDATING_REQUEST;
@@ -520,15 +616,16 @@ void Client::handle_response()
 	{
 		if (this->_state == VALIDATING_REQUEST)
 		{
-			this->_match_location(this->_request.get_uri());
+			this->_match_location();
 			this->_configure_common_config();
 			this->_is_method_allowed();
+			this->_dir_path = this->_common_server_config->root() + (this->_endpoint.empty() ? "/" : this->_endpoint); // public/ or public/some_place/
 			this->_state = PROCESSING_RESPONSE;
 		}
 
 		if (this->_state == PROCESSING_RESPONSE)
 		{
-			if (this->_is_target_cgi())
+			if (this->_request.get_target_file().length() > 0 && this->_is_target_cgi()) // if there was a file destination and that file is a cgi script
 			{
 				this->_initialize_cgi();
 				this->_cgi->execute();
@@ -537,19 +634,17 @@ void Client::handle_response()
 			else if (this->_common_server_config->redirect().size() > 0)
 			{
 				this->_handle_redirect();
-				this->_state == SENDING_RESPONSE;
+				this->_state = SENDING_RESPONSE;
 			}
 			else
 			{
-				this->_handle_method(this->_endpoint);
-				this->_state == SENDING_RESPONSE;
+				this->_handle_method();
+				this->_state = SENDING_RESPONSE;
 			}
 		}
 
 		if (this->_state == PROCESSING_CGI)
-		{
-			int status;
-			
+		{			
 			if (this->_cgi->get_state() == CGI::PROCESSING)
 			{
 				try
@@ -562,7 +657,7 @@ void Client::handle_response()
 				}
 			}
 
-			struct timeval  timeout = {.tv_sec = 0, .tv_usec = 0};
+			struct timeval  timeout = {};
 			int read_fd = this->_cgi->get_read_fd();
 			int	write_fd = this->_cgi->get_write_fd();
 			int max_fd = (read_fd > write_fd) ? read_fd : write_fd;
@@ -590,7 +685,7 @@ void Client::handle_response()
 
 			if (FD_ISSET(write_fd, &write_set))
 			{
-				char *buffer;
+				char *buffer = NULL;
 
 				if (this->_request.get_body_stream().read(buffer, CGI_READ_BUFFER_SIZE))
 				{
@@ -611,8 +706,6 @@ void Client::handle_response()
 
 			if ((time(NULL) - this->_cgi->get_time_since_last_activity()) > CGI_TIMEOUT)
 			{
-				delete this->_cgi;
-				this->_cgi = NULL;
 				throw HTTPException(500, "CGI error");
 			}
 
@@ -627,8 +720,8 @@ void Client::handle_response()
 					throw HTTPException(500, "Some kind of cgi error");
 				}
 				this->_response.set_header(this->_cgi->get_headers());
-				this->_response.set_body_stream(this->_cgi->get_body());
-				this->_state == SENDING_RESPONSE;
+				this->_response.set_body_stream(std::auto_ptr<std::istream>(new std::stringstream(this->_cgi->get_body_string())));
+				this->_state = SENDING_RESPONSE;
 			}
 		}
 	}
@@ -641,8 +734,9 @@ void Client::handle_response()
 	if (this->_state == PROCESSING_EXCEPTION)
 	{
 		this->_handle_exception();
-		this->_state == SENDING_RESPONSE;
+		this->_state = SENDING_RESPONSE;
 	}
+
 	if (this->_state == SENDING_RESPONSE && this->_response.get_message_format() == NULL)
 	{
 		this->_response.set_header("Connection", "Closed");
@@ -659,7 +753,5 @@ void Client::handle_response()
 		this->_state = FINISHED_PROCESSING;
 	}
 }
-
-#pragma endregion PublicMemberMethods
 
 }

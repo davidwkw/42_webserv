@@ -1,10 +1,7 @@
-#ifndef __WEBSERV_CONFIGURATIONS__
-#define __WEBSERV_CONFIGURATIONS__
+#pragma once
 
 #include "Config.hpp"
+#include "CommonServerConfig.hpp"
 #include "WebserverConfig.hpp"
-#include "LocationConfig.hpp"
 #include "ServerConfig.hpp"
-#include "LimitExcept.hpp"
-
-#endif
+#include "LocationConfig.hpp"

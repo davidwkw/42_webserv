@@ -1,5 +1,4 @@
-#ifndef __CONNECTING_SOCKET__
-#define __CONNECTING_SOCKET__
+#pragma once
 
 #include "Socket.hpp"
 
@@ -14,5 +13,3 @@ class ConnectingSocket : public Socket
 };
 
 }
-
-#endif

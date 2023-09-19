@@ -53,7 +53,7 @@ const char *Config::block_directives_array[] =	{
 
 const std::set<std::string> Config::all_directives_set = init_string_set(Config::all_directives_array);
 
-const std::set<std::string> Config::all_directives_set = init_string_set(Config::normal_directives_array);
+const std::set<std::string> Config::normal_directives_set = init_string_set(Config::normal_directives_array);
 
 const std::set<std::string> Config::array_directives_set = init_string_set(Config::array_directives_array);
 
@@ -62,31 +62,27 @@ const std::set<std::string> Config::block_directives_set = init_string_set(Confi
 const std::map<std::string, std::string> Config::directive_defaults = Config::_init_directive_defaults();
 
 std::map<std::string, std::string> Config::_init_directive_defaults(){
-	typedef std::pair<std::string, std::string> directive_default_pair;
-	
-	const directive_default_pair directives_default_pairs[]	=	{
-												directive_default_pair("server_name", ""),
-												directive_default_pair("error_log", "logs/error.log error"),
-												directive_default_pair("index", "index.html"),
-												directive_default_pair("listen", "8000"),
-												directive_default_pair("user", "nobody nobody"),
-												directive_default_pair("pid", "logs/nginx.pid"),
-												directive_default_pair("worker_processes", "1"),
-												directive_default_pair("autoindex", "off"),
-												directive_default_pair("root", "public"),
-												directive_default_pair("client_body_temp_path", "client_body_temp"),
-												directive_default_pair("client_max_body_size", "1m"),
-												directive_default_pair("limit_except", "GET")
-												};
 
 	std::map<std::string, std::string> fill_map;
 
-	for (std::size_t i = 0; i < sizeof(directives) / sizeof(std::string); i++)
-		fill_map.insert(directives_default_pairs[i]);
+	fill_map["server_name"] = "";
+	fill_map["error_log"] = "logs/error.log error";
+	fill_map["index"] = "index.html";
+	fill_map["listen"] = "8000";
+	fill_map["user"] = "nobody nobody";
+	fill_map["pid"] = "logs/nginx.pid";
+	fill_map["worker_processes"] = "1";
+	fill_map["autoindex"] = "off";
+	fill_map["root"] = "public";
+	fill_map["client_body_temp_path"] = "client_body_temp";
+	fill_map["client_max_body_size"] = "1m";
+	fill_map["limit_except"] = "GET";
+	
 	return fill_map;
 }
 
-Config::Config() : _directives(){
+Config::Config() : _directives()
+{
 	_fill_directive_defaults(this->_directives, Config::all_directives_set);
 }
 
@@ -97,25 +93,27 @@ Config::Config(const Config &ref) : _directives(ref._directives)
 	*this = ref;
 }
 
-Config &Config::operator=(const Config &ref){
-	if (this != &ref){
+Config &Config::operator=(const Config &ref)
+{
+	if (this != &ref)
+	{
 		this->_directives = ref._directives;
 	}
 	return *this;
 }
 
-Config::Config(const directive_container_type &directives) : _directives()
+Config::Config(const std::map<std::string, std::string> &directives) : _directives()
 {
 	this->_directives = directives;
 	_fill_directive_defaults(this->_directives, Config::all_directives_set);
 }
 
-Config::Config(const directive_container_type &directives, allowed_directives_container_type inclusion_set) : _directives() {
+Config::Config(const std::map<std::string, std::string> &directives, std::set<std::string> inclusion_set) : _directives() {
 	
-	directive_container_type::const_iterator cit;
-	directive_type temp;
+	std::map<std::string, std::string>::const_iterator cit;
+	std::pair<std::string, std::string> temp;
 
-	for (allowed_directives_container_type::iterator it = inclusion_set.begin(); it != inclusion_set.end(); ++it)
+	for (std::set<std::string>::iterator it = inclusion_set.begin(); it != inclusion_set.end(); ++it)
 	{
 		cit = directives.find(*it);
 		if (cit != directives.end())
@@ -124,15 +122,15 @@ Config::Config(const directive_container_type &directives, allowed_directives_co
 	_fill_directive_defaults(this->_directives, inclusion_set);
 }
 
-Config::directive_container_type Config::directives() const{
+std::map<std::string, std::string> Config::directives() const{
 	return this->_directives;
 }
 
-void Config::add_directive(directive_type directive){
+void Config::add_directive(std::pair<std::string, std::string> directive){
 	this->_directives.insert(directive);
 }
 
-Config::directive_type Config::parse_directive(const std::string &directive){
+std::pair<std::string, std::string> Config::parse_directive(const std::string &directive){
 	std::stringstream 				temp;
 	std::string 					word;
 	std::string 					k;
@@ -144,15 +142,15 @@ Config::directive_type Config::parse_directive(const std::string &directive){
 		v += (v.empty() ? "" :  " " ) + word;
 	}
 	
-	return directive_type(k, v);
+	return std::pair<std::string, std::string>(k, v);
 }
 
-Config::directive_container_type Config::parse_all_directives(const std::string &str, const allowed_directives_container_type &inclusion_set = Config::all_directives_set){
-	Config::directive_container_type container;
+std::map<std::string, std::string> Config::parse_all_directives(const std::string &str, const std::set<std::string> &inclusion_set){
+	std::map<std::string, std::string> container;
 	std::size_t start_index = 0;
 	std::size_t delimiter_index = start_index;
 	std::string captured_directive;
-	Config::directive_type directive_pair;
+	std::pair<std::string, std::string> directive_pair;
 
   	while ((delimiter_index = str.find_first_of(";{}", delimiter_index)) != std::string::npos)
 	{
@@ -186,13 +184,15 @@ Config::directive_container_type Config::parse_all_directives(const std::string 
 	return container;
 }
 
-void Config::_fill_directive_defaults(directive_container_type &directive_ref, const allowed_directives_container_type &inclusion_set, const directive_container_type &defaults_map = Config::directive_defaults){
-	Config::directive_container_type::const_iterator dit;
+void Config::_fill_directive_defaults(std::map<std::string, std::string> &directive_ref, const std::set<std::string> &inclusion_set, const std::map<std::string, std::string> &defaults_map){
 
-	for (allowed_directives_container_type::const_iterator cit = inclusion_set.begin(); cit != inclusion_set.end(); ++cit){
-		dit = defaults_map.find(*cit);
+	for (std::set<std::string>::const_iterator cit = inclusion_set.begin(); cit != inclusion_set.end(); ++cit)
+	{
+		std::map<std::string, std::string>::const_iterator dit = defaults_map.find(*cit);
 		if (dit != defaults_map.end())
+		{
 			directive_ref.insert(*dit);
+		}
 	}
 }
 
@@ -210,7 +210,7 @@ std::multimap<std::string, std::string> Config::parse_block_directives(const std
 		}
 		start_index = str.find_last_of('}', delimiter_index);
 		start_index %= std::string::npos;
-		start_index = start_index > 0 ? start_index += 1 : start_index;
+		start_index = (start_index > 0) ? start_index + 1 : start_index;
 		directive_pair.first = str.substr(start_index, delimiter_index - start_index);
 		directive_pair.first = trim_str(directive_pair.first, " \n\t");
 		directive_pair.second = str_char_limit_span(str.c_str() + delimiter_index, '{', '}');
@@ -221,7 +221,7 @@ std::multimap<std::string, std::string> Config::parse_block_directives(const std
 }
 
 const std::vector<std::string> Config::find_normal_directive(const std::string &directive_key) const {
-	directive_container_type::const_iterator cit;
+	std::map<std::string, std::string>::const_iterator cit;
 	std::vector<std::string> ret_vector;
 
 	cit = this->_directives.find(directive_key);
@@ -231,7 +231,7 @@ const std::vector<std::string> Config::find_normal_directive(const std::string &
 }
 
 const std::vector<std::vector<std::string > > Config::find_array_directive(const std::string &directive_key) const{
-	directive_container_type::const_iterator cit;
+	std::map<std::string, std::string>::const_iterator cit;
 	std::vector<std::vector<std::string> > ret_vector;
 
 	cit = this->_directives.find(directive_key);

@@ -1,20 +1,35 @@
-#ifndef __SERVER_CONFIG_HPP__
-#define __SERVER_CONFIG_HPP__
+#pragma once
 
 #include <set>
 #include <map>
+#include <vector>
 #include <sstream>
+#include <string>
+#include <cstdlib>
+#include "../utils/utils.hpp"
 #include "LocationConfig.hpp"
 #include "Config.hpp"
 #include "WebserverConfig.hpp"
 #include "CommonServerConfig.hpp"
-#include "../../includes/webserv.hpp"
 
 namespace ft
 {
 
 class ServerConfig : public CommonServerConfig
 {
+	public:
+		ServerConfig();
+		~ServerConfig();
+		ServerConfig(const ServerConfig &ref);
+		ServerConfig &operator=(const ServerConfig &ref);
+		ServerConfig(std::map<std::string, std::string> directives, const std::string &server_str);
+
+		const std::map<std::string, LocationConfig>		locations() const;
+		const std::vector<unsigned int>					ports() const;
+		const std::vector<std::vector<std::string> >	listen() const;
+		const std::set<std::string> 					server_names() const;
+		const std::string 								client_body_temp_path() const;
+
 	private:
 		std::map<std::string, LocationConfig> 	_locations;
 
@@ -30,24 +45,6 @@ class ServerConfig : public CommonServerConfig
 
 		void 		_parse_location_conf(const std::string &cached_string);
 
-	public:
-		ServerConfig();
-		~ServerConfig();
-		ServerConfig(const ServerConfig &ref);
-		ServerConfig &operator=(const ServerConfig &ref);
-		ServerConfig(Config::directive_container_type directives, const std::string &server_str);
-
-#pragma region Getters
-
-		const std::map<std::string, LocationConfig>		locations() const;
-		const std::vector<unsigned int>					ports() const;
-		const std::vector<std::vector<std::string> >	listen() const;
-		const std::set<std::string> 					server_names() const;
-		const std::string 								client_body_temp_path() const;
-
-#pragma endregion Getters
 };
 
 }
-
-#endif

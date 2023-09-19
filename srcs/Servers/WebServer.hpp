@@ -1,14 +1,19 @@
-#ifndef __HTTP_SERVER_HPP__
-#define __HTTP_SERVER_HPP__
+#pragma once
 
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
+#include <sys/time.h>
+#include <unistd.h>
 #include <string>
+#include "../Configurations/Config.hpp"
+#include "HTTPServer.hpp"
 #include "../../includes/webserv.hpp"
 
 namespace ft
 {
+
+class HTTPServer;
 
 class WebServer
 {
@@ -20,11 +25,11 @@ class WebServer
 		void run();
 
 	private:
+		WebserverConfig						_webserver_config;
+		std::map<unsigned int, HTTPServer>	_port_http_server_map;
 		fd_set								_all_fds;
 		fd_set 								_read_fds;
 		fd_set								_write_fds;
-		WebserverConfig						_webserver_config;
-		std::map<unsigned int, HTTPServer>	_port_http_server_map;
 
 		void _initialise_socket_fd();
 		void _reinitialize_fd_sets();
@@ -36,5 +41,3 @@ class WebServer
 };
 
 }
-
-#endif

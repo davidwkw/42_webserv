@@ -1,7 +1,10 @@
-#ifndef __RESPONSE__
-#define __RESPONSE__
+#pragma once
 
-#include "../../includes/webserv.hpp"
+#include <map>
+#include <string>
+#include <sstream>
+#include <memory>
+#include "../utils/utils.hpp"
 
 namespace ft 
 {
@@ -9,29 +12,16 @@ namespace ft
 class Response
 {
 	public:
+		static const std::map<int, std::string> _fill_reason_phrase_map();
+
 		enum ResponseWriteState
 		{
 			WRITING,
 			FINISHED
 		};
 
-	private:
-		static const std::map<int, std::string>			reason_phrase_map;
-		
-		float								_http_protocol;
-		int									_status_code;
-		std::map<std::string, std::string>	_headers;
-		std::stringstream					*_message_format;
-		std::istream						*_body_stream;
-		ResponseWriteState					_write_state;
-
-	public:
-		static const std::map<int, std::string> _fill_reason_phrase_map();
-
 		Response();
 		Response(float protocol_version);
-		Response(const Response &src);
-		Response &operator=(const Response &src);
 		~Response();
 
 		void				construct_response_message_format();
@@ -42,15 +32,24 @@ class Response
 		std::istream 		*get_body_stream();
 		ResponseWriteState	get_write_state() const;
 		int					get_status_code() const;
-		std::string 		get_string() const;
 
 		void 				set_status_code(const int &code);
-		void 				set_body_stream(std::istream &body);
+		void				set_body_stream(std::istream *body_stream);
+		void				set_body_stream(std::auto_ptr<std::istream> body_stream);
 		void				set_header(const std::map<std::string, std::string> &header_map);
 		void				set_header(const std::string &key, const std::string &value);
 		void				remove_header(const std::string &key);
+		
+	private:
+		static const std::map<int, std::string>	reason_phrase_map;
+		
+		float									_http_protocol;
+		int										_status_code;
+		std::map<std::string, std::string>		_headers;
+		std::auto_ptr<std::stringstream>		_message_format;
+		std::auto_ptr<std::istream>				_body_stream;
+		ResponseWriteState						_write_state;
+
 };
 
 }
-
-#endif

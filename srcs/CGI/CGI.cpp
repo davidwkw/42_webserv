@@ -3,19 +3,13 @@
 namespace ft
 {
 
-#pragma region Constructor
-
-CGI::CGI(const std::string &binary) : _binary(binary), _time_since_last_activity(time(NULL)), _read_pipefd(STDIN_FILENO), _write_pipefd(STDOUT_FILENO), _state(PROCESSING) {}
+CGI::CGI() : _state(PROCESSING), _binary(), _args(), _envp(), _read_pipefd(STDIN_FILENO), _write_pipefd(STDOUT_FILENO), _pid(-1), _time_since_last_activity(time(NULL)), _output_stream(), _headers(){}
 
 CGI::~CGI()
 {
 	close(this->_read_pipefd);
 	close(this->_write_pipefd);
 }
-
-#pragma endregion Constructor
-
-#pragma region ClassHelpers
 
 void CGI::_validate_header_field(const std::pair<std::string, std::string> &header_pair)
 {
@@ -33,11 +27,11 @@ void CGI::_validate_header_field(const std::pair<std::string, std::string> &head
 
 void CGI::_parse_headers()
 {
-	std::string line;
-	std::size_t separator_index;
-	std::size_t whitespace_index;
-	std::pair<std::string, std::string> header_field_pair;
-	std::pair<std::map<std::string, std::string>::iterator,bool> insert_return;
+	std::string														line;
+	std::size_t														separator_index;
+	std::size_t														whitespace_index;
+	std::pair<std::string, std::string>								header_field_pair;
+	std::pair<std::map<std::string, std::string>::iterator,bool>	insert_return;
 
 	while (getline_CRLF(this->_output_stream, line) && !line.empty())
 	{
@@ -52,19 +46,37 @@ void CGI::_parse_headers()
 	getline_CRLF(this->_output_stream, line);
 }
 
-void CGI::_parse_body()
+std::auto_ptr<char *> CGI::_prepare_meta_variables()
 {
-	std::size_t header_pos;
-	std::string	body_string;
+	std::auto_ptr<char *>	env_arr(new char*[this->_envp.size() + 1]);
+	std::size_t				index = 0;
 
-	header_pos = this->_output_stream.str().find(CRLF CRLF);
-	body_string = this->_output_stream.str().substr(header_pos + 4);
-	this->_body.write(body_string.c_str(), body_string.length());
+	for (std::set<std::string>::iterator it = this->_envp.begin(); it != this->_envp.end(); it++)
+	{
+		env_arr.get()[index] = const_cast<char *>(it->c_str());
+		index++;
+	}
+	env_arr.get()[index] = NULL;
+
+	return env_arr;
 }
 
-#pragma endregion ClassHelpers
+std::auto_ptr<char *> CGI::_prepare_cgi_arg()
+{
+	std::auto_ptr<char *> args(new char*[1 + this->_args.size() + 1]);
+	std::size_t	index = 0;
 
-#pragma region Getters
+	args.get()[index] = const_cast<char *>(this->_binary.c_str());
+	index++;
+	for (std::vector<std::string>::iterator it = this->_args.begin(); it != this->_args.end(); it++)
+	{
+		args.get()[index] = const_cast<char *>(it->c_str());
+		index++;
+	}
+	args.get()[index] = NULL; 
+
+	return args;
+}
 
 CGI::ProcessState CGI::get_state() const
 {
@@ -91,14 +103,18 @@ time_t CGI::get_time_since_last_activity() const
 	return this->_time_since_last_activity;
 }
 
-const std::stringstream & CGI::get_body() const
-{
-	return this->_body;
-}
 
-std::stringstream &CGI::get_body()
+std::string CGI::get_body_string() const
 {
-	return this->_body;
+	std::size_t header_pos;
+	std::string	body_string;
+
+	header_pos = this->_output_stream.str().find(CRLF CRLF);
+	if (header_pos != std::string::npos)
+	{
+		body_string = this->_output_stream.str().substr(header_pos + 4);
+	}
+	return body_string;
 }
 
 const std::stringstream &CGI::get_output_stream() const
@@ -111,10 +127,6 @@ std::stringstream &CGI::get_output_stream()
 	return this->_output_stream;
 }
 
-#pragma endregion Getters
-
-#pragma region Setters
-
 void CGI::update_time_since_last_activity(const time_t &time)
 {
 	this->_time_since_last_activity = time;
@@ -125,9 +137,10 @@ void CGI::set_pid(pid_t pid)
 	this->_pid = pid;
 }
 
-#pragma endregino Setters
-
-#pragma region PublicMemberMethods
+void CGI::set_binary(const std::string &binary)
+{
+	this->_binary = binary;
+}
 
 void CGI::close_read_fd()
 {
@@ -145,11 +158,21 @@ void CGI::close_write_fd()
 	this->_write_pipefd = STDOUT_FILENO;
 }
 
+void CGI::add_arg(const std::string &arg)
+{
+	this->_args.push_back(arg);
+}
+
 void CGI::add_envp(std::string key, std::string val)
 {
 	str_to_uppercase(key);
 	str_replace_char(key, '-', '_');
 	this->_envp.insert(key + "=" + val);
+}
+
+void CGI::add_server_envp(const char *env_var)
+{
+	this->_envp.insert(std::string(env_var));
 }
 
 void CGI::execute()
@@ -162,7 +185,7 @@ void CGI::execute()
 	int		readpipe[2];
 	int		writepipe[2];
 
-	if (pipe(readpipe) == -1)
+	if (pipe(readpipe) == -1 || pipe(writepipe) == -1)
 	{
 		throw HTTPException(500, "Pipe error");
 	}
@@ -178,20 +201,12 @@ void CGI::execute()
 		dup2(readpipe[1], STDOUT_FILENO);
 		close(readpipe[1]);
 
-		// char **meta_envp = new char *[];
+		std::auto_ptr<char *> meta_envp;
+		meta_envp = this->_prepare_meta_variables();
+		std::auto_ptr<char *> args;
+		args = this->_prepare_cgi_arg();
 
-		// executable = format_executable();
-		char **meta_envp;
-		// meta_envp = prepare_meta_variables();
-		char **args;
-		// args = format_cgi_arg();
-
-		execve(this->_binary.c_str(), args, meta_envp);
-		for (std::size_t i = 0; meta_envp[i]; i++)
-		{
-			delete meta_envp[i];
-		}
-		delete[] meta_envp;
+		execve(this->_binary.c_str(), args.get(), meta_envp.get());
 		throw HTTPException(500, "Execve error");
 	}
 	else
@@ -200,15 +215,17 @@ void CGI::execute()
 		close(writepipe[0]);
 		this->_read_pipefd = readpipe[0];
 		this->_write_pipefd = writepipe[1];
+		this->_time_since_last_activity = time(NULL);
 	}
 }
 
-std::string	CGI::read_cgi_stream(const size_t &read_amount)
+void CGI::read_cgi_stream(const size_t &read_amount)
 {
-	char		buffer[read_amount + 1] = {};
-	std::size_t	bytes_read;
+	std::auto_ptr<char> buffer(new char[read_amount + 1]);
+	ssize_t				bytes_read = 0;
 
-	bytes_read = read(this->_read_pipefd, buffer, sizeof(read_amount));
+	std::memset(buffer.get(), 0, read_amount + 1);
+	bytes_read = read(this->_read_pipefd, buffer.get(), sizeof(read_amount));
 	if (bytes_read == -1)
 	{
 		throw HTTPException(500, "Read failed");
@@ -221,7 +238,7 @@ std::string	CGI::read_cgi_stream(const size_t &read_amount)
 	}
 	else
 	{
-		this->_output_stream << buffer;
+		this->_output_stream << buffer.get();
 	}
 }
 
@@ -256,10 +273,7 @@ void CGI::process_output()
 		throw std::runtime_error("Couldn't find header end");	
 	}
 	this->_parse_headers();
-	this->_parse_body();
-	this->_headers.insert(std::make_pair("Content-Length", size_t_to_string(this->_body.str().length())));
+	this->_headers.insert(std::make_pair("Content-Length", to_string(this->get_body_string().length())));
 }
-
-#pragma endregion PublicMemberMethods
 
 }

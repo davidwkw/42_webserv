@@ -1,5 +1,4 @@
-#ifndef __LISTENING_SOCKET__
-#define __LISTENING_SOCKET__
+#pragma once
 
 #include "BindingSocket.hpp"
 
@@ -12,9 +11,9 @@ class ListeningSocket : public BindingSocket
 		int _backlog;
 	public:
 		ListeningSocket(int domain, int service, int protocol, unsigned int port, u_long interface, int backlog);
+		virtual ~ListeningSocket();
 
 		int start_listening();
 };
-}
 
-#endif
+}

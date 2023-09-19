@@ -33,10 +33,6 @@ const char *LocationConfig::array_directives_array[] =	{
 														"error_log",
 														"cgi_bin",
 														};
-									
-// const char *LocationConfig::block_directives_array[] = 	{
-// 														"limit_except"
-// 														};
 
 const std::set<std::string> LocationConfig::all_directives_set = init_string_set(LocationConfig::all_directives_array);
 
@@ -44,13 +40,11 @@ const std::set<std::string> LocationConfig::normal_directives_set = init_string_
 
 const std::set<std::string> LocationConfig::array_directives_set = init_string_set(LocationConfig::array_directives_array);
 
-// const std::set<std::string> LocationConfig::block_directives_set = init_string_set(LocationConfig::block_directives_array);
-
 LocationConfig::LocationConfig(void) : CommonServerConfig(){}
 
 LocationConfig::~LocationConfig(void){}
 
-LocationConfig::LocationConfig(const LocationConfig &ref)
+LocationConfig::LocationConfig(const LocationConfig &ref) : CommonServerConfig()
 {
 	*this = ref;
 }
@@ -64,18 +58,14 @@ LocationConfig &LocationConfig::operator=(const LocationConfig &ref)
 	return *this;
 }
 
-LocationConfig::LocationConfig(Config::directive_container_type directives, const std::string &location_str) : CommonServerConfig(directives, LocationConfig::all_directives_set)
+LocationConfig::LocationConfig(std::map<std::string, std::string> directives, const std::string &location_str) : CommonServerConfig(directives, LocationConfig::all_directives_set)
 {
 	this->_directives = Config::parse_all_directives(location_str, LocationConfig::all_directives_set);
 }
-
-#pragma region Getters
 
 const std::vector<std::string> LocationConfig::client_body_temp_path() const
 {
 	return this->find_normal_directive("client_body_temp_path");
 }
-
-#pragma endregion Getters
 
 }

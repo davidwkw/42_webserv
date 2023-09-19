@@ -3,8 +3,6 @@
 namespace ft
 {
 
-#pragma region Constructors
-
 CommonServerConfig::CommonServerConfig() : Config(){}
 
 CommonServerConfig::~CommonServerConfig(){}
@@ -23,15 +21,11 @@ CommonServerConfig &CommonServerConfig::operator=(const CommonServerConfig &ref)
 	return *this;
 }
 
-CommonServerConfig::CommonServerConfig(const directive_container_type &directives) : Config(directives)
+CommonServerConfig::CommonServerConfig(const std::map<std::string, std::string> &directives) : Config(directives)
 {}
 
-CommonServerConfig::CommonServerConfig(const directive_container_type &directives, allowed_directives_container_type inclusion_set) : Config(directives, inclusion_set)
+CommonServerConfig::CommonServerConfig(const std::map<std::string, std::string> &directives, std::set<std::string> inclusion_set) : Config(directives, inclusion_set)
 {}
-
-#pragma endregion Constructors
-
-#pragma region Getters
 
 const std::vector<std::vector<std::string> > CommonServerConfig::error_page() const
 {
@@ -74,7 +68,7 @@ const std::string CommonServerConfig::autoindex() const
 	return "off";
 }
 
-const std::size_t CommonServerConfig::client_max_body_size() const // validation shouldn't be done in the getter, but no input validition done prior to this call so no choice at the moment.
+std::size_t CommonServerConfig::client_max_body_size() const // validation shouldn't be done in the getter, but no input validition done prior to this call so no choice at the moment.
 {
 	std::vector<std::string> temp_vect = this->find_normal_directive("client_max_body_size");
 	std::string value_string;
@@ -116,7 +110,5 @@ const std::vector<std::vector<std::string> > CommonServerConfig::cgi() const
 {
 	return this->find_array_directive("cgi_bin");
 }
-
-#pragma region Getters
 
 }

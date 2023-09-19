@@ -1,5 +1,4 @@
-#ifndef __SOCKET_HPP__
-#define __SOCKET_HPP__
+#pragma once
 
 #include <netinet/in.h>
 #include <sys/types.h>
@@ -18,8 +17,7 @@ namespace ft
 			struct sockaddr_in _address;
 		public:
 			Socket(int domain, int service, int protocol, unsigned int port, u_long interface);
-			Socket(const struct addrinfo &addr);
-			~Socket();
+			virtual ~Socket();
 
 			void		test_connection(int);
 			virtual int connect_to_network(int sock, struct sockaddr_in address) = 0;
@@ -28,5 +26,3 @@ namespace ft
 			int					get_sock() const;
 	};
 }
-
-# endif

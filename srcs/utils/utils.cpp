@@ -6,6 +6,7 @@
 #include <vector>
 #include <string>
 #include <algorithm>
+#include "utils.hpp" 
 
 std::string ret_str_perror(const std::string &msg)
 {
@@ -17,7 +18,7 @@ std::string ret_str_perror(const std::string &msg)
 	return str;
 }
 
-std::string trim_str(const std::string &str, const char *chars)
+std::string trim_str(const std::string &str, const std::string &chars)
 {
 	std::size_t start_index;
 	std::size_t end_index;
@@ -194,26 +195,6 @@ std::size_t	calc_input_stream_size(std::istream &stream)
 	return size;
 }
 
-std::string size_t_to_string(std::size_t val)
-{
-	std::ostringstream oss;
-
-	oss << val;
-
-	return oss.str();
-}
-
-std::string extract_file_extension(const std::string &filename)
-{
-	std::size_t extension_begin_index;
-
-	if ((extension_begin_index = filename.find_last_of('.')) == std::string::npos)
-	{
-		throw std::runtime_error("Missing delimiter for beginning of extension");
-	}
-	return filename.substr(extension_begin_index + 1);
-}
-
 void str_to_uppercase(std::string &str)
 {
 	std::transform(str.begin(), str.end(), str.begin(), toupper);
@@ -238,4 +219,9 @@ std::string extract_file_extension(const std::string &filename)
 		return "";
 	}
 	return filename.substr(dot_index + 1);
+}
+
+void	close_fd_helper(int fd)
+{
+	close(fd);
 }

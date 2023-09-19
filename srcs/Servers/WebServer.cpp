@@ -3,16 +3,14 @@
 namespace ft
 {
 
-#pragma region Constructors
-
-WebServer::WebServer(const std::string &conf_path) : _webserver_config(conf_path)
+WebServer::WebServer(const std::string &conf_path) : _webserver_config(conf_path), _port_http_server_map(), _all_fds(), _read_fds(), _write_fds()
 {
     FD_ZERO(&this->_all_fds);
     FD_ZERO(&this->_read_fds);
     FD_ZERO(&this->_write_fds);
 }
 
-WebServer::WebServer(const WebserverConfig &config) : _webserver_config(config)
+WebServer::WebServer(const WebserverConfig &config) : _webserver_config(config), _port_http_server_map(), _all_fds(), _read_fds(), _write_fds()
 {
     FD_ZERO(&this->_all_fds);
     FD_ZERO(&this->_read_fds);
@@ -21,38 +19,36 @@ WebServer::WebServer(const WebserverConfig &config) : _webserver_config(config)
 
 WebServer::~WebServer(){}
 
-#pragma endregion Constructors
-
-#pragma region OperatorOverloads
-
-#pragma endregion OperatorOverloads
-
-#pragma region ClassUtility
-
 void WebServer::_initialise_socket_fd()
 {
-    for(std::map<unsigned int, std::vector<long> >::const_iterator cit = this->_webserver_config.get_port_server_config_map().begin(); cit != this->_webserver_config.get_port_server_config_map().end(); cit++)
+    std::map<long, ServerConfig>    index_to_server_config_map; 
+
+    index_to_server_config_map = this->_webserver_config.servers();
+    // Go through each port/server config index
+    for(std::map<unsigned int, std::vector<long> >::const_iterator cit = this->_webserver_config.get_port_server_config_index_map().begin(); cit != this->_webserver_config.get_port_server_config_index_map().end(); cit++)
     {
         std::vector<ServerConfig>   server_configs;
 
+        // Go through each server config index of a particular port
         for (std::vector<long>::const_iterator cit2 = cit->second.begin(); cit2 != cit->second.end(); cit2++)
         {
-            std::map<long, ServerConfig>    server_map; 
-            
-            server_map = this->_webserver_config.servers();
-            server_configs.push_back(server_map[*cit2]);
+            // Collect all server configs that belong to a particular port
+            server_configs.push_back(index_to_server_config_map[*cit2]);
         }
+        // construct HTTPServer based on port number and pass all server configs to the server
         this->_port_http_server_map.insert(std::make_pair(cit->first, HTTPServer(cit->first, BACKLOG, MAX_CLIENTS, BUFFER_SIZE, server_configs)));
     }
 }
 
 void WebServer::_reinitialize_fd_sets()
 {   
+    // Reset all fd_sets
     this->_read_fds = this->_write_fds = this->_all_fds;
 }
 
 void WebServer::_append_listen_sockets_to_allfd(int &max_fd)
 {
+    // Go through all port/http server;set fd into fd_set; update highest socket_fd; 
     for (std::map<unsigned int, HTTPServer>::iterator it = this->_port_http_server_map.begin(); it != this->_port_http_server_map.end(); it++)
     {
         int socket_fd = it->second.get_listen_socket_fd();
@@ -91,6 +87,7 @@ void WebServer::_append_write_sockets_to_writefd(int &max_fd)
 
 void WebServer::_accept_incoming_connections()
 {
+    // Go through each HTTPServer fd and check if set
     for (std::map<unsigned int, HTTPServer>::iterator it = this->_port_http_server_map.begin(); it != this->_port_http_server_map.end(); it++)
     {
         if (FD_ISSET(it->second.get_listen_socket_fd(), &this->_read_fds))
@@ -100,14 +97,17 @@ void WebServer::_accept_incoming_connections()
 
 void WebServer::_perform_socket_io()
 {
+    // Go through each port/httpserver
     for (std::map<unsigned int, HTTPServer>::iterator it = this->_port_http_server_map.begin(); it != this->_port_http_server_map.end(); it++)
     {
+        // Go through each httpserver's read fds;
         for (std::list<int>::iterator it2 = it->second.get_client_read_fds().begin(); it2 != it->second.get_client_read_fds().end(); it2++)
         {
             if (FD_ISSET(*it2, &this->_read_fds))
                 it->second.handle_request(*it2);
         }
 
+        // Go through each httpserver's write fds;
         for (std::list<int>::iterator it2 = it->second.get_client_write_fds().begin(); it2 != it->second.get_client_write_fds().end(); it2++)
         {
             if (FD_ISSET(*it2, &this->_write_fds))
@@ -115,8 +115,6 @@ void WebServer::_perform_socket_io()
         }
     }
 }
-
-#pragma endregion ClassUtility
 
 void WebServer::run()
 {   

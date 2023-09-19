@@ -1,5 +1,4 @@
-#ifndef __SERVER_HPP__
-#define __SERVER_HPP__
+#pragma once
 
 #include <signal.h>
 #include "../Sockets/webserv-sockets.hpp"
@@ -22,5 +21,3 @@ class Server
 };
 
 }
-
-#endif

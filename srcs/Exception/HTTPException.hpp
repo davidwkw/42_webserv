@@ -15,9 +15,10 @@ class HTTPException : public std::exception
 
 	public:
 		HTTPException(unsigned int status_code, std::string message);
+		~HTTPException() throw();
 		const char* what() const throw();
 
 		unsigned int get_status_code() const;
 };
 
-};
+}

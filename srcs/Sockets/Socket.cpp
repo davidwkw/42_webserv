@@ -18,12 +18,9 @@ Socket::Socket(int domain, int service, int protocol, unsigned int port, u_long 
 	test_connection(_sock_fd);
 }
 
-Socket::Socket(const struct addrinfo &addr){}
-
 Socket::~Socket()
 {
-	if (close(this->_sock_fd) < 0)
-		throw std::runtime_error(ret_str_error("Error closing socket"));
+	close(this->_sock_fd);
 }
 
 void Socket::test_connection(int item_to_test)

@@ -1,9 +1,21 @@
 #pragma once
 
-#include "../../includes/webserv.hpp"
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <string>
+#include <sstream>
+#include <map>
+#include "../../includes/macros.hpp"
+#include "../Configurations/webserv-configurations.hpp"
+#include "../HTTP/Request.hpp"
+#include "../HTTP/Response.hpp"
+#include "../CGI/CGI.hpp"
 
 namespace ft
 {
+
+class CGI;
+class CommonServerConfig;
 
 class Client
 {
@@ -19,14 +31,20 @@ class Client
 			FINISHED_PROCESSING
 		};
 
-		Client(int fd, unsigned int buffer_size);
+		Client(int fd, std::size_t buffer_size);
 		~Client();
 
 		int							get_fd() const;
-		Request						get_request() const;
-		Response					get_response() const;
+		Request const				&get_request() const;
+		Response const				&get_response() const;
+		Request						&get_request();
+		Response					&get_response();
 		ProcessState				get_process_state() const;
 		ServerConfig const*			get_server_config() const;
+		std::string					get_server_ip() const;
+		std::string					get_client_ip() const;
+		int							get_server_port() const;
+		int							get_client_port() const;
 
 		void						set_server_config(ServerConfig *server_config);
 		void						set_process_state(ProcessState const &state);
@@ -41,33 +59,37 @@ class Client
 
 		ProcessState				_state;
 		int							_fd;
-		const CommonServerConfig	*_common_server_config;
+		CommonServerConfig			*_common_server_config;
 		ServerConfig				*_server_config;
 		Request						_request;
 		Response					_response;
-		unsigned int 				_buffer_size;
-		std::istream				*_content;
+		std::size_t 				_buffer_size;
 		std::string					_endpoint;
-		CGI							*_cgi;
+		std::string					_dir_path;
+		std::auto_ptr<CGI>			_cgi;
+		int							_client_port;
+		std::string					_client_ip;
+		int							_server_port;
+		std::string					_server_ip;
 
-		void		_match_location(std::string location_str);
-		void		_handle_auto_index(const std::string &dir);
-		void		_is_method_allowed();
-		void		_handle_method(const std::string &endpoint);
-		void		_handle_get(const std::string &endpoint);
-		void		_handle_post(const std::string &endpoint);
-		void		_handle_delete(std::string file_path);
-		std::string	_generate_dir_content_list_html(std::string dir);
-		void		_handle_exception();
-		void		_handle_auto_index(const std::string &dir_path, std::stringstream &stream);
-		void		_handle_redirect();
-		void		_handle_cgi(const std::string &cgi_script_name);
-		bool		_is_target_cgi();
-		char		**_prepare_cgi_meta_variables();
-		void		_configure_common_config();
-		void		_initialize_cgi();
-		std::string _get_cgi_binary();
-		std::string	_translate_binary_path();
+		void						_match_location();
+		void						_handle_auto_index(const std::string &dir);
+		void						_is_method_allowed();
+		void						_handle_method();
+		void						_handle_get(const std::string &path);
+		void						_handle_post(const std::string &path);
+		void						_handle_delete(std::string file_path);
+		std::string					_generate_dir_content_list_html(std::string dir);
+		void						_handle_exception();
+		void						_handle_auto_index(const std::string &dir_path, std::stringstream &stream);
+		void						_handle_redirect();
+		void						_handle_cgi(const std::string &cgi_script_name);
+		bool						_is_target_cgi();
+		void						_configure_common_config();
+		void						_initialize_cgi();
+		std::string					_extract_binary_path_from_config(const std::string &file_extension);
+		std::string					_translate_binary_path();
+		std::string 				_get_cgi_path_info();
 
 };
 

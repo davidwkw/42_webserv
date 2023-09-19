@@ -1,5 +1,4 @@
-#ifndef __BINDING_SOCKET__
-#define __BINDING_SOCKET_
+#pragma once
 
 #include "Socket.hpp"
 
@@ -11,7 +10,7 @@ class BindingSocket : public Socket
 	public:
 		BindingSocket(int domain, int service, int protocol, unsigned int port, u_long interface);
 		int connect_to_network(int sock, struct sockaddr_in address);
+		virtual ~BindingSocket();
 };
-}
 
-#endif
+}

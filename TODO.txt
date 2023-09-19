@@ -1,4 +1,4 @@
-cgi
-upload
+change clients to auto_ptr to clients
 
-set default error pages when none have been set up
+handle post still doesn't work, need to also extract filename from message body. make new class to handle? client starting to juggle too many responsibilities
+remember that request body closing boundary has trailing "--"

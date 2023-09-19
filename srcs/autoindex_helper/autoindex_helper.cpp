@@ -10,8 +10,10 @@ std::string generate_dir_content_list_html(const std::string &root_prefix, const
 	DIR					*folder;
 
     folder = opendir((root_prefix + dir_to_cache).c_str());
-    if(folder == NULL)
+    if (folder == NULL)
+	{
         throw std::runtime_error("Couldn't open dir " + (root_prefix + dir_to_cache));
+	}
 	while ((entry = readdir(folder)) != NULL)
 	{
 		if (entry->d_type == DT_REG)
@@ -97,7 +99,9 @@ void clear_auto_index_cache(const std::string &dir)
 
     folder = opendir(dir.c_str());
     if(folder == NULL)
+	{
         throw std::runtime_error(dir + "Directory non-existent");
+	}
 	while ((entry = readdir(folder)) != NULL)
 	{
 		if (entry->d_type == DT_REG)

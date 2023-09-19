@@ -3,41 +3,55 @@
 namespace ft
 {
 
-#pragma region Constructor
+RequestLine::RequestLine() : method(), target(), uri(), protocol(), target_file(), query() {}
 
-Request::Request() : _buffer_stream(), _request_start_line(), _headers(), _body(), _read_state(Request::READING){}
+RequestLine::~RequestLine(){}
 
-Request::Request(const std::string &request_string) : _buffer_stream(), _request_start_line(), _headers(), _body(), _read_state(Request::READING){}
-
-Request::Request(const Request &ref) : _buffer_stream(ref._buffer_stream), _request_start_line(ref._request_start_line), _headers(ref._headers), _body(ref._body)
-{
+RequestLine::RequestLine(const RequestLine& ref) : method(ref.method), target(ref.target), uri(ref.uri), protocol(ref.protocol), target_file(ref.target_file), query(ref.query)
+{ 
 	*this = ref;
 }
 
-Request::~Request(){}
-
-#pragma endregion Constructor
-
-#pragma region OperatorOverload
-
-Request &Request::operator=(const Request &ref)
+RequestLine &RequestLine::operator=(const RequestLine& ref)
 {
 	if (this != &ref)
 	{
-		this->_buffer_stream = ref._buffer_stream;
-		this->_request_start_line = ref._request_start_line;
-		this->_headers = ref._headers;
-		this->_body = ref._body;
+		this->method = ref.method;
+		this->target = ref.target;
+		this->uri = ref.uri;
+		this->protocol = ref.protocol;
+		this->target_file = ref.target_file;
+		this->query = ref.query;
 	}
 	return *this;
 }
 
-#pragma endregion OperatorOverload
+Request::Request() : _read_state(Request::READING), _request_start_line(), _headers(), _buffer_stream(), _body(), _header_break_index(std::string::npos){}
 
-#pragma region ClassUtility
+// Request::Request(const Request &ref) : _read_state(ref._read_state), _request_start_line(ref._request_start_line), _headers(ref._headers), _buffer_stream(ref._buffer_stream),_body(ref._body), _header_break_index(std::string::npos)
+// {
+// 	*this = ref;
+// }
+
+Request::~Request(){}
+
+// Request &Request::operator=(const Request &ref)
+// {
+// 	if (this != &ref)
+// 	{
+// 		this->_read_state = ref._read_state;
+// 		this->_request_start_line = ref._request_start_line;
+// 		this->_headers = ref._headers;
+// 		this->_buffer_stream = ref._buffer_stream;
+// 		this->_body = ref._body;
+// 		this->_header_break_index = ref._header_break_index;
+// 	}
+// 	return *this;
+// }
 
 std::string Request::_validate_method(std::string method)
 {
+	// abit wonky innit?
 	const std::string valid_methods[8] = {
 		"OPTIONS",
 		"GET",
@@ -52,14 +66,12 @@ std::string Request::_validate_method(std::string method)
 	for (int i = 0; i < 8; i++)
 	{
 		if (method.compare(valid_methods[i]) == 0)
+		{
 			return method;
+		}
 	}
 	throw HTTPException(400, "Invalid method");
-}
-
-std::string Request::_extract_uri(const std::string &uri_string)
-{
-	return uri_string.substr(0, uri_string.find_last_of('/') + 1);
+	return method;
 }
 
 std::string	_extract_target(const std::string &uri_string)
@@ -91,6 +103,32 @@ std::map<std::string, std::string> Request::_extract_query(const std::string &ur
 	return return_map;
 }
 
+std::string	_extract_target_file(const std::string &uri_string)
+{
+	int			count;
+	std::size_t	dot_pos;
+	std::size_t	leading_backslash_pos;
+	std::size_t	trailing_backslash_pos;
+	std::string	target_file_name = "";
+
+	count = std::count(uri_string.begin(), uri_string.end(), '.');
+	if (count > 1)
+	{
+		throw HTTPException(404, "Invalid url");
+	}
+	if (count == 0)
+	{
+		return target_file_name;
+	}
+
+	dot_pos = uri_string.find_first_of('.');
+	leading_backslash_pos = uri_string.find_last_of('/', dot_pos);
+	trailing_backslash_pos = uri_string.find_first_of('/', dot_pos);
+	target_file_name = uri_string.substr(leading_backslash_pos + 1, trailing_backslash_pos);
+
+	return target_file_name;
+}
+
 void Request::_parse_request_line()
 {
 	std::vector<std::string> request_line_tokens;
@@ -100,14 +138,15 @@ void Request::_parse_request_line()
 	request_line_tokens = tokenise_str(line);
 	if (request_line_tokens.size() != 3)
 	{
-		std::runtime_error("Invalid request start line");
+		throw HTTPException(400, "Invalid request start line");
 	}
 	std::string decoded_uri = url_decode(request_line_tokens[1]);
 
 	this->_request_start_line.method = this->_validate_method(request_line_tokens[0]);
-	this->_request_start_line.uri = this->_extract_uri(decoded_uri);
+	this->_request_start_line.uri = decoded_uri;
 	this->_request_start_line.target = this->_extract_target(decoded_uri);
 	this->_request_start_line.query = this->_extract_query(decoded_uri);
+	this->_request_start_line.target_file = this->_extract_target_file(decoded_uri);
 	this->_request_start_line.protocol = request_line_tokens[2]; // lower priority might want to validate
 }
 
@@ -216,10 +255,6 @@ void Request::_parse_request()
 	this->_headers.insert(std::make_pair("Content-Type", "text/plain; charset=US-ASCII"));
 }
 
-#pragma endregion ClassUtility
-
-#pragma region Getters
-
 std::string Request::get_method() const
 {
 	return this->_request_start_line.method;
@@ -233,6 +268,11 @@ std::string Request::get_uri() const
 std::string Request::get_target() const
 {
 	return this->_request_start_line.target;
+}
+
+std::string Request::get_target_file() const
+{
+	return this->_request_start_line.target_file;
 }
 
 std::string Request::get_protocol() const
@@ -281,6 +321,11 @@ std::string Request::get_body_string() const
 	return this->_body.str();
 }
 
+std::string Request::get_query_string() const
+{
+	return this->_request_start_line.uri.substr(this->_request_start_line.uri.find_first_of('?') + 1) ;
+}
+
 std::string Request::get_query_param(const std::string key) const
 {
 	std::string value;
@@ -296,30 +341,25 @@ Request::RequestReadState Request::get_request_read_state() const
 	return this->_read_state;
 }
 
-#pragma endregion Getters
-
-#pragma region Setters
-
 void Request::set_request_read_state(Request::RequestReadState state)
 {
 	this->_read_state = state;
 }
 
-#pragma endregion Setters
-
-#pragma region PublicMemberMethods
-
-void Request::append_to_request(const char *string)
+void Request::append_to_request(std::string str)
 {
-	this->_buffer_stream << string;
+	this->_buffer_stream << str;
 }
 
 void Request::process_request()
 {
-	std::size_t header_break_index = this->_buffer_stream.str().find(CRLF CRLF);
+	if (this->_header_break_index == std::string::npos)
+	{
+		this->_header_break_index = this->_buffer_stream.str().find(CRLF CRLF);
+		if (this->_header_break_index == std::string::npos)
+			return;
+	}
 
-	if (header_break_index == std::string::npos)
-		return;
 	try
 	{
 		if (this->_headers.size() == 0)
@@ -333,11 +373,12 @@ void Request::process_request()
 		transfer_encoding = this->_headers.find("Transfer-Encoding");
 		content_length = this->_headers.find("Content-Length");
 		if (transfer_encoding == this->_headers.end()
-		&& content_length == this->_headers.end())
+			&& content_length == this->_headers.end())
 		{
 			this->_read_state = FINISHED;
 			return;
 		}
+		
 		if (transfer_encoding != this->_headers.end())
 		{
 			std::vector<std::string> temp = tokenise_str(transfer_encoding->second);
@@ -352,11 +393,12 @@ void Request::process_request()
 			}
 		}
 		else if ((content_length != this->_headers.end())
-				&& (std::strtoul(content_length->second.c_str(), NULL, 10) == (this->_buffer_stream.str().length() - header_break_index + 4)))
+				&& (std::strtoul(content_length->second.c_str(), NULL, 10) == (this->_buffer_stream.str().length() - this->_header_break_index + 4)))
 		{
-			this->_body << this->_buffer_stream.str().substr(header_break_index + 4);
+			this->_body.str(this->_buffer_stream.str().substr(this->_header_break_index + 4));
 			this->_read_state = FINISHED;
 		}
+		this->_buffer_stream.str("");
 	}
 	catch (const HTTPException& e)
 	{
@@ -364,7 +406,5 @@ void Request::process_request()
 		throw e;
 	}	
 }
-
-#pragma endregion PublicMemberMethods
 
 }

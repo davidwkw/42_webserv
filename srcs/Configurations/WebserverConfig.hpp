@@ -1,26 +1,29 @@
-#ifndef __CONFIG_HPP__
-#define __CONFIG_HPP__
+#pragma once
 
 #include <fstream>
 #include <iostream>
 #include <exception>
 #include <vector>
 #include <set>
-#include "Config.hpp"
-#include "ServerConfig.hpp"
-#include "../../includes/webserv.hpp"
+#include <map>
 #include <sstream>
 #include <stdexcept>
+#include <string>
+#include "../utils/utils.hpp"
+#include "Config.hpp"
+#include "ServerConfig.hpp"
 
 namespace ft
 {
+
+class ServerConfig;
 
 class WebserverConfig : public Config
 {
 	private:
 		std::string									_path;
 		std::map<long, ServerConfig>				_servers;
-		std::map<unsigned int, std::vector<long> >	_port_server_config_map;
+		std::map<unsigned int, std::vector<long> >	_port_server_config_index_map;
 
 		static const char					*all_directives_array[];
 		static const char 					*normal_directives_array[];
@@ -44,11 +47,9 @@ class WebserverConfig : public Config
 		WebserverConfig &operator=(const WebserverConfig &ref);
 		WebserverConfig(const std::string &filename);
 
-		std::map<unsigned int, std::vector<long> >	get_port_server_config_map() const;
+		std::map<unsigned int, std::vector<long> >	get_port_server_config_index_map() const;
 		const std::string 							&path() const;
 		const std::map<long, ServerConfig>			servers() const;
 };
 
 }
-
-#endif

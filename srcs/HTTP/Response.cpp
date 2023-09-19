@@ -3,8 +3,6 @@
 namespace ft
 {
 
-#pragma region Non-MemberItems
-
 const std::map<int, std::string> Response::reason_phrase_map = Response::_fill_reason_phrase_map();
 
 const std::map<int, std::string> Response::_fill_reason_phrase_map()
@@ -79,30 +77,13 @@ const std::map<int, std::string> Response::_fill_reason_phrase_map()
 	return container;
 }
 
-#pragma endregion Non-MemberItems
-
-#pragma region Constructors
-
-Response::Response() : _http_protocol(), _status_code(), _headers(), _write_state(WRITING), _body_stream(NULL), _message_format(NULL)
+Response::Response() : _http_protocol(), _status_code(), _headers(), _message_format(NULL), _body_stream(NULL), _write_state(WRITING)
 {}
 
-Response::Response(float protocol_version) : _http_protocol(protocol_version), _status_code(), _headers(), _write_state(WRITING), _body_stream(NULL), _message_format(NULL)
+Response::Response(float protocol_version) : _http_protocol(protocol_version), _status_code(), _headers(), _message_format(NULL), _body_stream(NULL), _write_state(WRITING)
 {}
 
-Response::Response(const Response &ref)
-{
-	*this = ref;
-}
-
-Response::~Response()
-{
-	delete this->_message_format;
-	delete this->_body_stream;
-}
-
-#pragma endregion Constructors
-
-#pragma region Getters
+Response::~Response(){}
 
 Response::ResponseWriteState Response::get_write_state() const
 {
@@ -116,31 +97,32 @@ int	Response::get_status_code() const
 
 std::istream const* Response::get_body_stream() const
 {
-	return this->_body_stream;
+	return this->_body_stream.get();
 }
 
 std::istream *Response::get_body_stream() 
 {
-	return this->_body_stream;
+	return this->_body_stream.get();
 }
 
 std::istream *Response::get_message_format() const
 {
-	return this->_message_format;
+	return this->_message_format.get();
 }
-
-#pragma endregion Getters
-
-#pragma region Setters
 
 void Response::set_status_code(const int &code)
 {
 	this->_status_code = code;
 }
 
-void Response::set_body_stream(std::istream &body_stream)
+void Response::set_body_stream(std::istream *body_stream)
 {
-	this->_body_stream = &body_stream;
+	this->_body_stream = std::auto_ptr<std::istream>(body_stream);
+}
+
+void Response::set_body_stream(std::auto_ptr<std::istream> body_stream)
+{
+	this->_body_stream = body_stream;
 }
 
 void Response::set_header(const std::string &key, const std::string &value)
@@ -161,13 +143,12 @@ void Response::remove_header(const std::string &key)
 	this->_headers.erase(key);
 }
 
-#pragma endregion Setters
-
-#pragma region PublicMemberFunctions
-
-void Response::construct_response_message_format()
+void Response::construct_response_message_format() // TODO: refactor
 {
-	this->_message_format = new std::stringstream;
+	if (this->_message_format.get() == NULL)
+	{
+		this->_message_format.reset(new std::stringstream);
+	}
 
 	*this->_message_format << "HTTP/" << this->_http_protocol << " " << this->_status_code << " " << (this->reason_phrase_map.find(this->_status_code)->second) << "\r\n";
 	for (std::map<std::string, std::string>::const_iterator cit = this->_headers.begin(); cit != this->_headers.end(); cit++)
@@ -179,23 +160,22 @@ void Response::construct_response_message_format()
 
 std::string Response::read_response(std::size_t buffer_size)
 {
-	char str[buffer_size];
+	std::auto_ptr<char> buffer(new char[buffer_size + 1]);
 
-	if (!this->_message_format)
+	std::memset(buffer.get(), 0, buffer_size + 1);
+	if (!this->_message_format.get())
 	{
-		this->_body_stream->read(str, buffer_size);
-		if (!this->_body_stream)
+		this->_body_stream->read(buffer.get(), buffer_size);
+		if (!this->_body_stream.get())
 		{
 			this->_write_state = FINISHED;
 		}
 	}
 	else
 	{
-		this->_message_format->read(str, buffer_size);
+		this->_message_format->read(buffer.get(), buffer_size);
 	}
-	return str;
+	return std::string(buffer.get());
 }
-
-#pragma endregion PublicMemberFunctions
 
 }

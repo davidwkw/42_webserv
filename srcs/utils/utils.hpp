@@ -1,8 +1,8 @@
-#ifndef __UTILS_HPP__
-#define __UTILS_HPP__
+#pragma once
 
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <unistd.h>
 #include <string>
 #include <cstring>
 #include <iostream>
@@ -12,25 +12,36 @@
 #include <fstream>
 #include <ios>
 #include <vector>
+#include <set>
+#include <sstream>
 
 namespace ft
 {
 
-std::string ret_str_error(const std::string &msg);
-std::string trim_str(const std::string &str, char *chars);
-std::string str_char_limit_span(const std::string &str, char open, char close);
-std::vector<std::string> tokenise_str(const std::string & str, char c = ' ');
-std::pair<std::string, std::string> extract_key_value_pair(const std::string &str, char delimiter_key);
-unsigned long hex_str_to_ulong(const std::string &hex_str);
-bool getline_CRLF(std::istream& input, std::string& line);
-std::string url_decode(const std::string &encoded_url);
-std::string string_vector_to_string(const std::vector<std::string> &vect);
-std::string prune_http_protocol(const std::string &domain_str);
-std::size_t	calc_input_stream_size(std::istream &stream);
-std::string size_t_to_string(std::size_t val);
-std::string extract_file_extension(const std::string &filename);
-std::string str_to_uppercase(std::string str);
-void str_replace_char(std::string &str, char old_char, char new_char);
+std::string 						ret_str_error(const std::string &msg);
+std::string 						trim_str(const std::string &str, const std::string &chars);
+std::string 						str_char_limit_span(const std::string &str, char open, char close);
+std::vector<std::string>			tokenise_str(const std::string & str, char c = ' ');
+std::pair<std::string, std::string>	extract_key_value_pair(const std::string &str, char delimiter_key);
+unsigned long						hex_str_to_ulong(const std::string &hex_str);
+bool								getline_CRLF(std::istream& input, std::string& line);
+std::string							url_decode(const std::string &encoded_url);
+std::string							string_vector_to_string(const std::vector<std::string> &vect);
+std::string							prune_http_protocol(const std::string &domain_str);
+std::size_t							calc_input_stream_size(std::istream &stream);
+std::string							extract_file_extension(const std::string &filename);
+std::string							str_to_uppercase(std::string str);
+void								str_replace_char(std::string &str, char old_char, char new_char);
+void								close_fd_helper(int fd);
+
+template <typename T>
+std::string to_string(T val_to_convert)
+{
+	std::ostringstream oss;
+
+	oss << val_to_convert;
+	return oss.str();
+}
 
 template<bool Cond, class T = void>
 struct enable_if {};
@@ -49,12 +60,6 @@ struct integral_constant {
 
 typedef integral_constant<bool,false> false_type;
 typedef integral_constant<bool,true> true_type;
-
-template<class T, class U>
-struct is_same : std::false_type {};
- 
-template<class T>
-struct is_same<T, T> : std::true_type {};
 
 template< class T > struct remove_const                { typedef T type; };
 template< class T > struct remove_const<const T>       { typedef T type; };
@@ -80,4 +85,3 @@ std::set<std::string> init_string_set(const char *(&arr)[N]){
 }
 
 }
-#endif

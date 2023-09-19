@@ -3,8 +3,6 @@
 namespace ft
 {
 
-#pragma region ClassVariables
-
 const char *WebserverConfig::all_directives_array[] =	{
 												"user",
 												"pid",
@@ -34,20 +32,17 @@ const std::set<std::string> WebserverConfig::array_directives_set = init_string_
 
 const std::set<std::string> WebserverConfig::block_directives_set = init_string_set(WebserverConfig::block_directives_array);
 
-#pragma endregion ClassVariables
 
-#pragma region Constructors
-
-WebserverConfig::WebserverConfig(void) : _path(){}
+WebserverConfig::WebserverConfig(void) : Config(), _path(){}
 
 WebserverConfig::~WebserverConfig(void){}
 
-WebserverConfig::WebserverConfig(const WebserverConfig &ref) : _path()
+WebserverConfig::WebserverConfig(const WebserverConfig &ref) : Config(), _path(), _servers(), _port_server_config_index_map()
 {
 	*this = ref;
 }
 
-WebserverConfig::WebserverConfig(const std::string &filename) : _path(filename){
+WebserverConfig::WebserverConfig(const std::string &filename) : Config(), _path(filename){
 	std::ifstream		conf_stream;
 	std::stringstream	ss;
 	std::string			raw;
@@ -63,23 +58,16 @@ WebserverConfig::WebserverConfig(const std::string &filename) : _path(filename){
 	this->_parse_server_conf(raw);
 }
 
-#pragma endregion Constructors
-
-#pragma region OperatorOverloads
-
 WebserverConfig &WebserverConfig::operator=(const WebserverConfig &ref){
 	if (this != &ref)
 	{
-		this->_path = ref._path;
 		this->_directives = ref._directives;
+		this->_path = ref._path;
 		this->_servers = ref._servers;
+		this->_port_server_config_index_map = ref._port_server_config_index_map;
 	}
 	return *this;
 }
-
-#pragma endregion OperatorOverloads
-
-#pragma region ClassUtilities
 
 bool	WebserverConfig::_open_file(const std::string &filename, std::ifstream& file){
 	if (filename.empty() == true)
@@ -123,7 +111,7 @@ void WebserverConfig::_parse_server_conf(const std::string &conf_str){
 			this->_servers.insert(block_pair);
 			for (std::vector<unsigned int>::const_iterator cit = block_pair.second.ports().begin(); cit != block_pair.second.ports().end(); cit++)
 			{
-				this->_port_server_config_map[*cit].push_back(block_pair.first);
+				this->_port_server_config_index_map[*cit].push_back(block_pair.first);
 			}
 		}
 		else
@@ -131,10 +119,6 @@ void WebserverConfig::_parse_server_conf(const std::string &conf_str){
 	}
 	
 }
-
-#pragma endregion ClassUtilities
-
-#pragma region Getters
 
 const std::string &WebserverConfig::path(void) const
 {
@@ -146,11 +130,9 @@ const std::map<long, ServerConfig> WebserverConfig::servers() const
 	return this->_servers;
 }
 
-std::map<unsigned int, std::vector<long> > WebserverConfig::get_port_server_config_map() const
+std::map<unsigned int, std::vector<long> > WebserverConfig::get_port_server_config_index_map() const
 {
-	return this->_port_server_config_map;
+	return this->_port_server_config_index_map;
 }
-
-#pragma endregion Getters
 
 }

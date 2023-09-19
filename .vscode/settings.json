@@ -50,7 +50,11 @@
 		"map": "cpp",
 		"queue": "cpp",
 		"list": "cpp",
-		"ctime": "cpp"
+		"ctime": "cpp",
+		"chrono": "cpp",
+		"condition_variable": "cpp",
+		"ratio": "cpp",
+		"shared_mutex": "cpp"
 	},
 	"C_Cpp.default.configurationProvider": "ms-vscode.makefile-tools",
 	"C_Cpp.errorSquiggles": "enabled"

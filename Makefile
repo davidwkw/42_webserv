@@ -1,15 +1,22 @@
 NAME = webserv
 
-SRCS_DIR = srcs
+SRCS_DIR = ./srcs
 
-SRCS = $(shell find . -name "*.cpp")
+BUILD_DIR = ./objs
+
+SRCS = $(shell find $(SRC_DIRS) -name '*.cpp')
 
 OBJS = $(SRCS:.cpp=.o)
 
+# OBJS := $(SRCS:%=$(BUILD_DIR)/%.o)
+
+# DEPS
+
 CXX = c++
 
-CXXFLAGS = -Wall -Wextra -Werror -std=c++98 -pedantic -Iincludes
+CXXFLAGS = -Wall -Wextra -Werror -std=c++98 -pedantic -Iincludes 
 
+RM = rm
 
 all : $(NAME)
 
@@ -18,10 +25,10 @@ $(NAME)	:	$(OBJS)
 	@$(CXX) $(CXXFLAGS) -o $@ $^
 
 clean :
-	@rm -rf $(OBJS)
+	@$(RM) -rf $(OBJS)
 
 fclean : clean
-	@rm -rf $(NAME)
+	@$(RM) -rf $(NAME)
 
 re : fclean all
 

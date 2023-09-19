@@ -54,7 +54,7 @@ ServerConfig::ServerConfig(void) : CommonServerConfig(), _locations(){}
 
 ServerConfig::~ServerConfig(void){}
 
-ServerConfig::ServerConfig(const ServerConfig &ref)
+ServerConfig::ServerConfig(const ServerConfig &ref) : CommonServerConfig(), _locations(ref._locations)
 {
 	*this = ref;
 }
@@ -69,7 +69,7 @@ ServerConfig &ServerConfig::operator=(const ServerConfig &ref)
 	return *this;
 }
 
-ServerConfig::ServerConfig(Config::directive_container_type directives, const std::string &server_str) : CommonServerConfig(directives, ServerConfig::all_directives_set)
+ServerConfig::ServerConfig(std::map<std::string, std::string> directives, const std::string &server_str) : CommonServerConfig(directives, ServerConfig::all_directives_set)
 {
 	this->_directives = Config::parse_all_directives(server_str, ServerConfig::all_directives_set);
 	this->_parse_location_conf(server_str);
@@ -95,8 +95,6 @@ void 	ServerConfig::_parse_location_conf(const std::string &cached_string){
 		}
 	}
 }
-
-#pragma region Getters
 
 const std::map<std::string, LocationConfig>	ServerConfig::locations() const
 {
@@ -140,7 +138,5 @@ const std::vector<unsigned int> ServerConfig::ports() const
 	}
 	return ret_vector;
 }
-
-#pragma endregion Getters
 
 }

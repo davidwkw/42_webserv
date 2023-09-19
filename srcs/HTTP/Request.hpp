@@ -1,41 +1,31 @@
-#ifndef __REQUEST__
-#define __REQUEST__
+#pragma once
 
 #include <string>
 #include <map>
 #include <cstdlib>
 #include <utility>
-#include "../../includes/webserv.hpp"
+#include <algorithm>
+#include "../utils/utils.hpp"
+#include "../Exception/HTTPException.hpp"
+#include "../../includes/macros.hpp"
+// #include "../../includes/webserv.hpp"
 
 namespace ft
 {
 
 struct RequestLine
 {
-	std::string							method;
+	std::string							method; 
 	std::string							target;
-	std::string							uri;
+	std::string							uri; 
 	std::string							protocol;
+	std::string							target_file; 
 	std::map<std::string, std::string>	query;
 
-	RequestLine() : method(), uri(), protocol(), target(){}
-	~RequestLine(){}
-	RequestLine(const RequestLine& ref) : method(ref.method), uri(ref.uri), protocol(ref.protocol), target(ref.target), query(ref.query)
-	{ 
-		*this = ref;
-	}
-	RequestLine &operator=(const RequestLine& ref)
-	{
-		if (this != &ref)
-		{
-			this->method = ref.method;
-			this->target = ref.target;
-			this->uri = ref.uri;
-			this->protocol = ref.protocol;
-			this->query = ref.query;
-		}
-		return *this;
-	}
+	RequestLine();
+	~RequestLine();
+	RequestLine(const RequestLine& ref);
+	RequestLine &operator=(const RequestLine& ref);
 };
 
 class Request
@@ -48,12 +38,9 @@ class Request
 		};
 
 		Request();
-		Request(const std::string &request_str);
-		Request(const Request &ref);
-		Request &operator=(const Request &ref);
+		// Request(const Request &ref);
+		// Request &operator=(const Request &ref);
 		~Request();
-
-#pragma region Getters
 
 		std::string 						get_header(const std::string &key) const;
 		std::string 						get_query_param(const std::string key) const;
@@ -64,32 +51,26 @@ class Request
 		std::map<std::string, std::string>	get_headers() const;
 		std::string 						get_method() const;
 		std::string							get_target() const;
+		std::string							get_target_file() const;
 		std::string 						get_uri() const;
+		std::string							get_query_string() const;
 		std::stringstream const &			get_body_stream() const;
 		std::stringstream &					get_body_stream();
 
-#pragma endregion Getters
-
-#pragma region Setters
-
 		void set_request_read_state(RequestReadState state);
 
-#pragma endregion Setters
-
-#pragma region PublicMemberMethods
-
-		void append_to_request(const char *string);
+		void append_to_request(std::string str);
 		void process_request();
 
-#pragma endregion PublicMemberMethods
-
 	private:
+		RequestReadState					_read_state;
+		RequestLine							_request_start_line;
 		std::map<std::string, std::string>	_headers;
 		std::stringstream					_buffer_stream;
-		RequestLine							_request_start_line;
 		std::stringstream					_body;
-		RequestReadState					_read_state;
+		std::size_t							_header_break_index;
 
+		std::string							_extract_target_file(const std::string &uri_string);
 		std::map<std::string, std::string>	_extract_query(const std::string &uri_string);
 		std::string							_extract_uri(const std::string &uri_string);
 		std::string							_extract_target(const std::string &uri_string);
@@ -101,9 +82,6 @@ class Request
 		void 								_parse_request_headers();
 		void 								_parse_chunked_request_body();
 		void 								_parse_encoded_request_body();
-
 };
 
 }
-
-#endif
