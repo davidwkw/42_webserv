@@ -10,11 +10,9 @@
 
 namespace ft
 {
+
 	class Socket
 	{
-		private:
-			int		_sock_fd;
-			struct sockaddr_in _address;
 		public:
 			Socket(int domain, int service, int protocol, unsigned int port, u_long interface);
 			virtual ~Socket();
@@ -24,5 +22,9 @@ namespace ft
 
 			struct sockaddr_in	get_address() const;
 			int					get_sock() const;
+		private:
+			int		_sock_fd;
+			struct sockaddr_in _address;
 	};
+
 }

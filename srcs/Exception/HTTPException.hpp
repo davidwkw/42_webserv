@@ -9,16 +9,16 @@ namespace ft
 
 class HTTPException : public std::exception
 {
-	private:
-		unsigned int _status_code;
-		std::string _message;
-
 	public:
-		HTTPException(unsigned int status_code, std::string message);
+		HTTPException(int status_code, std::string message);
 		~HTTPException() throw();
 		const char* what() const throw();
 
-		unsigned int get_status_code() const;
+		int get_status_code() const;
+
+	private:
+		int _status_code;
+		std::string _message;
 };
 
 }

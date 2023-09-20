@@ -5,10 +5,9 @@
 #include <cstdlib>
 #include <utility>
 #include <algorithm>
+#include "../../includes/macros.hpp" 
 #include "../utils/utils.hpp"
 #include "../Exception/HTTPException.hpp"
-#include "../../includes/macros.hpp"
-// #include "../../includes/webserv.hpp"
 
 namespace ft
 {
@@ -38,8 +37,6 @@ class Request
 		};
 
 		Request();
-		// Request(const Request &ref);
-		// Request &operator=(const Request &ref);
 		~Request();
 
 		std::string 						get_header(const std::string &key) const;
@@ -74,7 +71,7 @@ class Request
 		std::map<std::string, std::string>	_extract_query(const std::string &uri_string);
 		std::string							_extract_uri(const std::string &uri_string);
 		std::string							_extract_target(const std::string &uri_string);
-		std::string							_validate_method(std::string method);
+		std::string							_validate_method(const std::string &method);
 		void 								_parse_request_line();
 		void 								_validate_header_field(const std::pair<std::string, std::string> &header_pair);
 		void 								_handle_duplicate_headers(const std::string &key, std::string &original_value, const std::string &duplicate_value);

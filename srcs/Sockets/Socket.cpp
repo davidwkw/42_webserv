@@ -1,3 +1,4 @@
+#include "../utils/utils.hpp"
 #include "Socket.hpp"
 
 namespace ft
@@ -27,7 +28,7 @@ void Socket::test_connection(int item_to_test)
 {
 	if (item_to_test < 0)
 	{
-		throw std::runtime_error(ret_str_error("Failed to connect"));
+		throw std::runtime_error(ret_str_perror("Failed to connect"));
 	}
 }
 

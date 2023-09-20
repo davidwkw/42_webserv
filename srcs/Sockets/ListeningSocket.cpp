@@ -12,6 +12,8 @@ ListeningSocket::ListeningSocket(int domain, int service, int protocol, unsigned
 	test_connection(status);
 }
 
+ListeningSocket::~ListeningSocket(){}
+
 int ListeningSocket::start_listening()
 {
 	return listen(this->get_sock(), _backlog);

@@ -8,6 +8,8 @@ BindingSocket::BindingSocket(int domain, int service, int protocol, unsigned int
 	connect_to_network(this->get_sock(), this->get_address());
 }
 
+BindingSocket::~BindingSocket(){}
+
 int BindingSocket::connect_to_network(int sock, struct sockaddr_in address)
 {
 	return bind(sock, (struct sockaddr *)& address, sizeof(address));

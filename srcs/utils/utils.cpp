@@ -6,7 +6,10 @@
 #include <vector>
 #include <string>
 #include <algorithm>
-#include "utils.hpp" 
+#include "utils.hpp"
+
+namespace ft
+{
 
 std::string ret_str_perror(const std::string &msg)
 {
@@ -31,7 +34,7 @@ std::string trim_str(const std::string &str, const std::string &chars)
 	return str.substr(start_index, end_index - start_index + 1);
 }
 
-std::vector<std::string> tokenise_str(const std::string &str, char c = ' ')
+std::vector<std::string> tokenise_str(const std::string &str, char c)
 {
 	std::string temp;
 	std::vector<std::string> ret_vector;
@@ -195,9 +198,10 @@ std::size_t	calc_input_stream_size(std::istream &stream)
 	return size;
 }
 
-void str_to_uppercase(std::string &str)
+std::string str_to_uppercase(std::string str)
 {
 	std::transform(str.begin(), str.end(), str.begin(), toupper);
+	return str;
 }
 
 void str_replace_char(std::string &str, char old_char, char new_char)
@@ -224,4 +228,6 @@ std::string extract_file_extension(const std::string &filename)
 void	close_fd_helper(int fd)
 {
 	close(fd);
+}
+	
 }

@@ -27,7 +27,6 @@
 #include "../srcs/Logger/Logger.hpp"
 #include "../srcs/Sockets/webserv-sockets.hpp"
 #include "../srcs/Configurations/webserv-configurations.hpp"
-#include "../srcs/autoindex_helper/autoindex_helper.hpp"
 #include "../srcs/HTTP/Request.hpp"
 #include "../srcs/HTTP/Response.hpp"
 #include "../srcs/CGI/CGI.hpp"

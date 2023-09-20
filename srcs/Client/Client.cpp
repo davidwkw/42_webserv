@@ -1,9 +1,9 @@
 #include "Client.hpp"
 
+extern char **environ;
+
 namespace ft
 {
-
-extern char **environ;
 
 const std::map<std::string, std::string> Client::mime_type_map = Client::_fill_mime_type_map();
 

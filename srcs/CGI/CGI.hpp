@@ -1,16 +1,22 @@
 #pragma once
 
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <sys/types.h>
+#include <dirent.h>
 #include <map>
 #include <set>
 #include <vector>
 #include <sstream>
 #include <string>
-#include <sys/types.h>
-#include <sys/wait.h>
 #include <time.h>
 #include <memory>
 #include <cstring>
-#include "../../includes/webserv.hpp"
+#include <time.h>
+
+#include "../../includes/macros.hpp"
+#include "../utils/utils.hpp"
+#include "../Exception/HTTPException.hpp"
 
 namespace ft
 {

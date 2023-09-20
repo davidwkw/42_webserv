@@ -127,6 +127,11 @@ std::stringstream &CGI::get_output_stream()
 	return this->_output_stream;
 }
 
+std::map<std::string, std::string> CGI::get_headers()
+{
+	return this->_headers;
+}
+
 void CGI::update_time_since_last_activity(const time_t &time)
 {
 	this->_time_since_last_activity = time;

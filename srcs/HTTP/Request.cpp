@@ -28,28 +28,9 @@ RequestLine &RequestLine::operator=(const RequestLine& ref)
 
 Request::Request() : _read_state(Request::READING), _request_start_line(), _headers(), _buffer_stream(), _body(), _header_break_index(std::string::npos){}
 
-// Request::Request(const Request &ref) : _read_state(ref._read_state), _request_start_line(ref._request_start_line), _headers(ref._headers), _buffer_stream(ref._buffer_stream),_body(ref._body), _header_break_index(std::string::npos)
-// {
-// 	*this = ref;
-// }
-
 Request::~Request(){}
 
-// Request &Request::operator=(const Request &ref)
-// {
-// 	if (this != &ref)
-// 	{
-// 		this->_read_state = ref._read_state;
-// 		this->_request_start_line = ref._request_start_line;
-// 		this->_headers = ref._headers;
-// 		this->_buffer_stream = ref._buffer_stream;
-// 		this->_body = ref._body;
-// 		this->_header_break_index = ref._header_break_index;
-// 	}
-// 	return *this;
-// }
-
-std::string Request::_validate_method(std::string method)
+std::string Request::_validate_method(const std::string &method)
 {
 	// abit wonky innit?
 	const std::string valid_methods[8] = {
@@ -74,7 +55,7 @@ std::string Request::_validate_method(std::string method)
 	return method;
 }
 
-std::string	_extract_target(const std::string &uri_string)
+std::string	Request::_extract_target(const std::string &uri_string)
 {
 	return uri_string.substr(uri_string.find_last_of('/') + 1, uri_string.find('?'));
 }
@@ -103,7 +84,7 @@ std::map<std::string, std::string> Request::_extract_query(const std::string &ur
 	return return_map;
 }
 
-std::string	_extract_target_file(const std::string &uri_string)
+std::string	Request::_extract_target_file(const std::string &uri_string)
 {
 	int			count;
 	std::size_t	dot_pos;

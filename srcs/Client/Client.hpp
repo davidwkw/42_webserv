@@ -7,6 +7,7 @@
 #include <map>
 #include "../../includes/macros.hpp"
 #include "../Configurations/webserv-configurations.hpp"
+#include "../Exception/HTTPException.hpp"
 #include "../HTTP/Request.hpp"
 #include "../HTTP/Response.hpp"
 #include "../CGI/CGI.hpp"
