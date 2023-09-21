@@ -14,15 +14,21 @@
 #include <vector>
 #include <set>
 #include <sstream>
+#include <map>
+
+#include "../../includes/macros.hpp"
 
 namespace ft
 {
 
+std::string							ltrim_chars(const std::string& str, const std::string &characters);
+std::string							rtrim_chars(const std::string& str, const std::string &characters);
 std::string 						ret_str_perror(const std::string &msg);
-std::string 						trim_str(const std::string &str, const std::string &chars);
-std::string 						str_char_limit_span(const std::string &str, char open, char close);
+std::string 						trim_chars(const std::string &str, const std::string &chars);
+std::string 						str_limit_span(const std::string &str, const char open, const char close);
+std::string							extract_between_boundaries(const std::string &text, const std::string &start_boundary, const std::string &end_boundary);
 std::vector<std::string>			tokenise_str(const std::string & str, char c = ' ');
-std::pair<std::string, std::string>	extract_key_value_pair(const std::string &str, char delimiter_key);
+std::pair<std::string, std::string>	extract_key_value_pair(const std::string &str, const har delimiter_key);
 unsigned long						hex_str_to_ulong(const std::string &hex_str);
 bool								getline_CRLF(std::istream& input, std::string& line);
 std::string							url_decode(const std::string &encoded_url);
@@ -33,6 +39,13 @@ std::string							extract_file_extension(const std::string &filename);
 std::string							str_to_uppercase(std::string str);
 void								str_replace_char(std::string &str, char old_char, char new_char);
 void								close_fd_helper(int fd);
+std::map<std::string, std::string>	parse_key_value_string(const std::string &kv_string, const char kv_seperator , const char kv_delim);
+
+template <typename T1, typename T2>
+bool check_empty_pair(const std::pair<T1, T2> &pair_to_be_checked)
+{
+	return pair_to_be_checked.first == T1() && pair_to_be_checked.second == T2();
+}
 
 template <typename T>
 std::string to_string(T val_to_convert)

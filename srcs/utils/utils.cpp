@@ -11,6 +11,16 @@
 namespace ft
 {
 
+std::string ltrim_chars(const std::string& str, const std::string &characters)
+{
+    return str.substr(str.find_first_not_of(characters));
+}
+
+std::string rtrim_chars(const std::string& str, const std::string &characters)
+{
+    return str.substr(0, str.find_last_not_of(characters) + 1);;
+}
+
 std::string ret_str_perror(const std::string &msg)
 {
 	std::stringstream ss;
@@ -21,17 +31,9 @@ std::string ret_str_perror(const std::string &msg)
 	return str;
 }
 
-std::string trim_str(const std::string &str, const std::string &chars)
+std::string trim_chars(const std::string &str, const std::string &chars)
 {
-	std::size_t start_index;
-	std::size_t end_index;
-
-	start_index = str.find_first_not_of(chars);
-	start_index = (start_index == std::string::npos ? 0 : start_index);
-	end_index = str.find_last_not_of(chars);
-	end_index = (end_index == std::string::npos ? str.size() : end_index);
-	
-	return str.substr(start_index, end_index - start_index + 1);
+	return ltrim_chars(rtrim_chars(str, chars), chars);;
 }
 
 std::vector<std::string> tokenise_str(const std::string &str, char c)
@@ -44,54 +46,80 @@ std::vector<std::string> tokenise_str(const std::string &str, char c)
 	{
 		if (!temp.empty())
 		{
-			ret_vector.push_back(trim_str(temp, " \n\t"));
+			ret_vector.push_back(trim_chars(temp, WHITESPACE_CHARACTERS));
 		}
 	}
 	return ret_vector;
 }
 
-std::string str_char_limit_span(const std::string &str, char open, char close){
+std::string str_limit_span(const std::string &str, const char open, const char close){
 	std::size_t start_index;
 	std::size_t delimiter_index;
-	std::size_t pair;
-	std::string ret;
-	std::string span_limiters;
+	std::size_t pair = 0;
+	std::string ret = "";
 
+	if (open == 0 || close == 0 || open == close)
+    {
+        return ret;
+    }
 	start_index = str.find_first_of(open);
 	if (start_index == std::string::npos)
-		return std::string();
+		return ret;
 	pair = 1;
 	start_index += 1;
 	delimiter_index = start_index;
-	span_limiters += open;
-	span_limiters += close;
 	while ((pair > 0)
-			&& (delimiter_index = str.find_first_of(span_limiters, delimiter_index)) != std::string::npos)
+			&& (delimiter_index = str.find_first_of(std::string(1, open) + std::string(1, close), delimiter_index)) != std::string::npos)
 	{
 		if (str[delimiter_index] == open){
-			pair += 1;
+			++pair;
 		}
-		else {
-			pair -= 1;
+		else if (str[delimiter_index] == close) 
+		{
+			--pair;
+		}
+		if (pair == 0)
+		{
+			break;
 		}
 		++delimiter_index;
 	}
 	if (pair > 0)
-    	return std::string(); 
-	ret += str.substr(start_index, delimiter_index - start_index - 1);
+    	return ret; 
+	ret = str.substr(start_index, delimiter_index - start_index);
 	return ret;
 }
 
-std::pair<std::string, std::string> extract_key_value_pair(const std::string &str, char delimiter_key)
+std::string extract_between_boundaries(const std::string &text, const std::string &start_boundary, const std::string &end_boundary)
 {
-	std::size_t delimiter_index;
+    std::size_t start_index = text.find(start_boundary);
+    if (start_index == std::string::npos) {
+        return "";
+    }
+	 
+   start_index += start_boundary.length();
+
+    std::size_t end_index = text.find(end_boundary, start_index);
+    if (end_index == std::string::npos) {
+        return "";
+    }
+
+    return text.substr(start_index, end_index - start_index);
+}
+
+std::pair<std::string, std::string> extract_key_value_pair(const std::string &str, const char delimiter_key)
+{
+	std::size_t							delimiter_index;
+	std::pair<std::string, std::string>	result;
 
 	delimiter_index = str.find(delimiter_key);
 	if (delimiter_index == std::string::npos)
 	{
-		throw std::invalid_argument("No delimiter found");
+		return result;
 	}
-	return std::make_pair(trim_str(str.substr(0, delimiter_index), " "), trim_str(str.substr(delimiter_index + 1), " "));
+	result.first = trim_chars(str.substr(0, delimiter_index), WHITESPACE_CHARACTERS);
+	result.second = trim_chars(str.substr(delimiter_index + 1), WHITESPACE_CHARACTERS);
+	return result;
 }
 
 unsigned long hex_str_to_ulong(const std::string &hex_str)
@@ -229,5 +257,29 @@ void	close_fd_helper(int fd)
 {
 	close(fd);
 }
+
+std::map<std::string, std::string> parse_key_value_string(const std::string &kv_string, const char kv_seperator , const char kv_delim)
+{
+	std::istringstream 					iss(kv_string);
+	std::string							pair_string;
+	std::map<std::string, std::string>	result;
+	std::pair<std::string, std::string> extracted_pair;
+
+	if (kv_string.find(kv_seperator) == std::string::npos)
+	{
+		return result;
+	}
+	while (std::getline(iss, pair_string, kv_delim)) {
+        std::istringstream	pair_stream(pair_string);
+        std::string			key, value;
+        
+        if (std::getline(std::getline(pair_stream, key, kv_seperator), value))
+		{
+            result[key] = value;
+        }
+    }
+	return result;
+}
+
 	
 }
