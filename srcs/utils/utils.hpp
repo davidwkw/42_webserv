@@ -28,7 +28,7 @@ std::string 						trim_chars(const std::string &str, const std::string &chars);
 std::string 						str_limit_span(const std::string &str, const char open, const char close);
 std::string							extract_between_boundaries(const std::string &text, const std::string &start_boundary, const std::string &end_boundary);
 std::vector<std::string>			tokenise_str(const std::string & str, char c = ' ');
-std::pair<std::string, std::string>	extract_key_value_pair(const std::string &str, const har delimiter_key);
+std::pair<std::string, std::string>	extract_key_value_pair(const std::string &str, const char delimiter_key);
 unsigned long						hex_str_to_ulong(const std::string &hex_str);
 bool								getline_CRLF(std::istream& input, std::string& line);
 std::string							url_decode(const std::string &encoded_url);
