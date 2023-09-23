@@ -26,8 +26,8 @@ class RequestBody
 		std::string						get_type() const;
 		std::string						get_encoded_form() const;
 		std::map<int, RequestMultipart>	get_index_multipart() const;
-		std::stringstream				&get_raw_stream() const;
-		std::string						get_raw_string();
+		std::stringstream				&get_raw_stream();
+		std::string						get_raw_string() const;
 
 	private:
 		std::string							_type;
