@@ -16,8 +16,11 @@ class RequestBodyFactory
 
 		std::string		get_raw_content() const;
 		void 			set_raw_content(const std::string &raw_content);
+
+		void			reset();
 		RequestBody 	*build_multipart(const std::string &boundary);
 		RequestBody 	*build_form_encoded();
+
 	private:
 		std::string						_raw_content;
 

@@ -15,7 +15,7 @@ RequestBody *RequestBodyFactory::build_multipart(const std::string &boundary)
 
 	request_body = new RequestBody("multipart/form-data");
 	request_body->set_raw_stream(this->_raw_content);
-	request_body->set_index_multipart_map(this->_extract_multipart_request_body(boundary));
+	request_body->set_index_multipart_map(this->_extract_multipart_request_body("--" + boundary));
 	return request_body;
 }
 
@@ -39,28 +39,48 @@ void RequestBodyFactory::set_raw_content(const std::string &raw_content)
 	this->_raw_content = raw_content;
 }
 
+void RequestBodyFactory::reset()
+{
+	this->_raw_content = "";
+}
+
+
 std::map<int, RequestMultipart> RequestBodyFactory::_extract_multipart_request_body(const std::string &boundary)
 {
 	std::string	extracted_string = "";
 	std::size_t pos	= 0;
 	std::string	temp = this->_raw_content;
 	std::map<int, RequestMultipart> result;
+	std::size_t	first_boundary_pos;
+	std::size_t	end_boundary_pos;
 
-	if (temp.rfind(boundary + "--") == std::string::npos)
+	first_boundary_pos = temp.find(boundary); // necessary to ignore preamble
+	if (first_boundary_pos != 0) // preamble present
 	{
-		throw HTTPException(400, "Missing end body boundary" );
+		temp = temp.substr(pos);
+	}
+	temp = std::string(CRLF) + temp;
+	end_boundary_pos = temp.rfind(std::string(CRLF) + boundary + "--");
+	if (end_boundary_pos == std::string::npos)
+	{
+		throw std::runtime_error("Missing end boundary");
 	}
 	
 	try
 	{
-		extracted_string = extract_between_boundaries(temp, boundary, boundary);
-		pos = boundary.length() + extracted_string.length();
+		extracted_string = extract_between_boundaries(temp, std::string(CRLF) + boundary, std::string(CRLF) + boundary);
+		pos = 2 + boundary.length() + extracted_string.length();
 		while (extracted_string.length() > 0)
 		{
-			result.insert(std::make_pair(result.size(), trim_chars(extracted_string, WHITESPACE_CHARACTERS)));
+			extracted_string = extracted_string.substr(extracted_string.find_first_not_of(WHITESPACE_CHARACTERS) - 2); // accounting for transport padding, assuming last 2 characters are CRLF
+			result.insert(std::make_pair(result.size(), extracted_string));
+			if (pos >= end_boundary_pos) // ignore epilogue
+			{
+				break; 
+			}
 			temp = temp.substr(pos);
-			extracted_string = extract_between_boundaries(temp, boundary, boundary);
-			pos = boundary.length() + extracted_string.length();
+			extracted_string = extract_between_boundaries(temp, std::string(CRLF) + boundary, std::string(CRLF) + boundary);
+			pos = 2 + boundary.length() + extracted_string.length();
 		}
 	}
 	catch (std::exception &e)
