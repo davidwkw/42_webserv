@@ -1,7 +1,8 @@
 #pragma once
 
-#define WHITESPACE_CHARACTERS " \t\n\r\f\v"
+#include <limits.h>
 
+#define WHITESPACE_CHARACTERS " \t\n\r\f\v"
 #define PORT 8080
 #define HTTP_PROTOCOL 1.1
 #define DEFAULT_CONFIG_PATH "configs/default.conf"
