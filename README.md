@@ -4,6 +4,7 @@ Notes for .conf files:
 1. Comments are supported
 2. Location needs to be formatted between forward slashes, i.e. /endpoint/
 3. root directive should be a relative path to webserv binary, i.e. public/
+4. server->location directive inheritance is also supported. location directives overwrite server directives.
 
 Footnotes:
 1. A combination of chain of responsibility and possibly strategy design pattern would be more ideal for maintainability and scalability.
