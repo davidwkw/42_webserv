@@ -3,7 +3,7 @@ Readme for 42 programme's webserver project
 Notes for .conf files:
 1. Comments are supported
 2. Location needs to be formatted between forward slashes, i.e. /endpoint/
-3. root directive should be a relative path to webserv binary, i.e. public/
+3. root directive should be a relative path to webserv binary, i.e. public
 4. server->location directive inheritance is also supported. location directives overwrite server directives.
 
 Footnotes:
