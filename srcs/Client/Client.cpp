@@ -81,7 +81,7 @@ const std::map<std::string, std::string> Client::_fill_mime_type_map()
 	return container;
 }
 
-Client::Client(int fd, std::size_t buffer_size) : _state(PROCESSING_REQUEST), _fd(fd), _common_server_config(NULL), _server_config(NULL), _request(), _response(HTTP_PROTOCOL),_buffer_size(buffer_size), _endpoint(), _dir_path(), _cgi(NULL), _client_port(), _client_ip(), _server_port(), _server_ip()
+Client::Client(int fd, std::size_t buffer_size) : _state(READING_REQUEST_HEADERS), _fd(fd), _buffer_stream(), _common_server_config(NULL), _server_config(NULL), _request(), _response(HTTP_PROTOCOL),_buffer_size(buffer_size), _endpoint(), _dir_path(), _cgi(NULL), _client_port(), _client_ip(), _server_port(), _server_ip()
 {
 	struct sockaddr_in	client_addr = {};
 	socklen_t			client_addr_len = sizeof(client_addr);
@@ -118,6 +118,509 @@ Client::Client(int fd, std::size_t buffer_size) : _state(PROCESSING_REQUEST), _f
 
 Client::~Client(){}
 
+int	Client::get_fd() const
+{
+	return this->_fd;
+}
+
+Request const &Client::get_request() const
+{
+	return this->_request;
+}
+
+Request &Client::get_request()
+{
+	return this->_request;
+}
+
+Response &Client::get_response()
+{
+	return this->_response;
+}
+
+Client::ClientState Client::get_client_state() const
+{
+	return this->_state;
+}
+
+ServerConfig const* Client::get_server_config() const
+{
+	return this->_server_config;
+}
+
+std::string	Client::get_server_ip() const
+{
+	return this->_server_ip;
+}
+
+std::string	Client::get_client_ip() const
+{
+	return this->_client_ip;
+}
+
+int	Client::get_server_port() const
+{
+	return this->_server_port;
+}
+
+int	Client::get_client_port() const
+{
+	return this->_client_port;
+}
+
+void Client::set_server_config(ServerConfig *server_config)
+{
+	this->_server_config = server_config;
+}
+
+void Client::set_client_state(const ClientState &state)
+{
+	this->_state = state;
+}
+
+int Client::handle_request()
+{
+	std::auto_ptr<char>	buffer(new char[this->_buffer_size + 1]);
+	std::size_t			bytes_read = 0;
+
+	std::memset(buffer.get(), 0, this->_buffer_size + 1);
+	if ((bytes_read = recv(this->_fd, buffer.get(), this->_buffer_size, MSG_NOSIGNAL)) <= 0)
+	{
+		return bytes_read;
+	}
+	this->_buffer_stream << std::string(buffer.get());
+	try
+	{
+		if (this->_state == READING_REQUEST_HEADERS)
+		{
+			if (!this->_has_full_message_format_received())
+			{
+				return bytes_read;
+			}
+				this->_request.construct_message_format(this->_buffer_stream.str().substr(0, this->_buffer_stream.str().find(CRLF CRLF) + 2));
+				if (this->_request.get_method() == "POST" && this->_request.has_body_headers())
+			{
+				this->_check_request_body_headers();	
+				this->_buffer_stream.clear();
+				this->_buffer_stream.str(this->_buffer_stream.str().substr(this->_buffer_stream.str().find(CRLF CRLF) + 4));
+				this->_buffer_stream.seekg(0);
+				this->_buffer_stream.seekp(this->_buffer_stream.str().length());
+				this->_state = READING_REQUEST_BODY;
+			}
+				else
+				{
+					this->_buffer_stream.str("");
+					this->_state = VALIDATING_REQUEST;
+				}
+		}
+		else if (this->_state == READING_REQUEST_BODY)
+		{
+			if (!this->_request.get_header("Transfer-Encoding").empty())
+			{
+				this->_parse_chunked_request_body(this->_buffer_stream);
+			}
+				this->_check_body_size_within_limits(); // for chunked encoded, size checking will be inaccurate up to 7 + the length of the chunk-size line; would consider as a better than the alternative where a user can greatly exceed max size
+			if (!this->_has_received_complete_body())
+			{
+				return bytes_read;	
+			}
+			this->_create_request_body();
+			this->_buffer_stream.str("");
+			this->_state == VALIDATING_REQUEST;
+		}
+	}
+	catch(const HTTPException& e)
+	{
+		this->_response.set_status_code(e.get_status_code());
+	}
+
+	if (this->_request.get_request_state() == Request::FINISHED || this->_response.get_status_code() > 0)
+	{
+		this->_buffer_stream.str("");
+		this->_state = VALIDATING_REQUEST;
+	}
+	return bytes_read;
+}
+
+void Client::handle_response()
+{
+	try
+	{
+		if (this->_state == VALIDATING_REQUEST)
+		{
+			this->_match_location();
+			this->_configure_common_config();
+			this->_is_method_allowed();
+			this->_dir_path = this->_common_server_config->root() + (this->_endpoint.empty() ? "/" : this->_endpoint);
+			this->_state = PROCESSING_RESPONSE;
+		}
+
+		if (this->_state == PROCESSING_RESPONSE)
+		{
+			if (this->_request.get_target_file().length() > 0 && this->_is_target_cgi()) // if there was a file destination and that file is a cgi script
+			{
+				this->_initialize_cgi();
+				this->_cgi->execute();
+				this->_state = PROCESSING_CGI;
+			}
+			else if (this->_common_server_config->redirect().size() > 0)
+			{
+				this->_handle_redirect();
+				this->_state = SENDING_RESPONSE;
+			}
+			else
+			{
+				this->_handle_method();
+				this->_state = SENDING_RESPONSE;
+			}
+		}
+
+		if (this->_state == PROCESSING_CGI)
+		{			
+			if (this->_cgi->get_state() == CGI::PROCESSING)
+			{
+				try
+				{
+					this->_cgi->update_state();
+				}
+				catch (std::exception const& e)
+				{
+					throw HTTPException(500, "CGI error");
+				}
+			}
+
+			struct timeval  timeout = {};
+			int read_fd = this->_cgi->get_read_fd();
+			int	write_fd = this->_cgi->get_write_fd();
+			int max_fd = (read_fd > write_fd) ? read_fd : write_fd;
+			fd_set write_set;
+			fd_set read_set;
+			int activity;
+
+			FD_ZERO(&read_set);
+			FD_ZERO(&write_set);
+
+			if (read_fd > STDERR_FILENO)
+			{
+				FD_SET(read_fd, &read_set);
+			}
+
+			if (write_fd > STDERR_FILENO)
+			{
+				FD_SET(write_fd, &write_set);
+			}
+
+			if ((activity = select(max_fd + 1, &read_set, &write_set, NULL, &timeout)) == -1 && errno != EINTR)
+			{
+				throw HTTPException(500, "CGI error");
+			}
+
+			if (FD_ISSET(write_fd, &write_set))
+			{
+				std::auto_ptr<char> buffer(new char[CGI_READ_BUFFER_SIZE + 1]);
+
+				std::memset(buffer.get(), 0, CGI_READ_BUFFER_SIZE + 1);
+				if (this->_request.get_raw_body_stream().read(buffer.get(), CGI_READ_BUFFER_SIZE))
+				{
+					this->_cgi->write_to_cgi(buffer.get());
+					this->_cgi->update_time_since_last_activity(time(NULL));
+				}
+				else
+				{
+					this->_cgi->close_write_fd();
+				}
+			}
+
+			if (FD_ISSET(read_fd, &read_set))
+			{
+				this->_cgi->read_cgi_stream(CGI_READ_BUFFER_SIZE);
+				this->_cgi->update_time_since_last_activity(time(NULL));
+			}
+			
+			// only check timeout if still processing
+			if (this->_cgi->get_state() == CGI::PROCESSING && (time(NULL) - this->_cgi->get_time_since_last_activity()) > CGI_TIMEOUT)
+			{
+				throw HTTPException(500, "CGI error");
+			}
+
+			if (this->_cgi->get_state() == CGI::FINISHED)
+			{
+				try
+				{
+					this->_cgi->process_output();
+				}
+				catch (const std::exception &e)
+				{
+					throw HTTPException(500, "Some kind of cgi error");
+				}
+				this->_response.append_headers(this->_cgi->get_headers());
+				this->_response.set_body_stream(std::auto_ptr<std::istream>(new std::stringstream(this->_cgi->get_body_string())));
+				this->_state = SENDING_RESPONSE;
+			}
+		}
+	}
+	catch (const HTTPException &e)
+	{
+		this->_response.set_status_code(e.get_status_code());
+		this->_state = PROCESSING_EXCEPTION;
+	}
+	
+	if (this->_state == PROCESSING_EXCEPTION)
+	{
+		this->_handle_exception();
+		this->_state = SENDING_RESPONSE;
+	}
+
+	if (this->_state == SENDING_RESPONSE && this->_response.get_message_format() == NULL)
+	{
+		this->_response.set_header("Connection", "Closed");
+		this->_response.construct_response_message_format();
+	}
+
+	if (this->_state == SENDING_RESPONSE)
+	{
+		std::size_t sent_length;
+
+		std::string read_response_str = this->_response.read_response(this->_buffer_size);
+		sent_length = send(this->_fd, read_response_str.c_str(), read_response_str.length(), MSG_NOSIGNAL);
+		if (sent_length == -1)
+		{
+			this->_state = FINISHED_PROCESSING;
+		}
+		else if (sent_length < this->_buffer_size)
+		{
+			// push back response buffer position
+		}
+	}
+	if (this->_response.get_write_state() == Response::FINISHED)
+	{
+		this->_state = FINISHED_PROCESSING;
+	}
+}
+
+std::size_t Client::_get_body_size()
+{
+	return this->_buffer_stream.str().length();
+}
+
+void Client::_check_body_size_within_limits()
+{
+	if (this->_get_body_size() > this->_common_server_config->client_max_body_size())
+	{
+		throw HTTPException(413, "Request entity too large");
+	}
+}
+
+bool Client::_has_full_message_format_received()
+{
+	if (this->_state == READING_REQUEST_HEADERS)
+	{
+		return this->_buffer_stream.str().find(CRLF CRLF) != std::string::npos;
+	}
+	return true;
+}
+
+bool Client::_has_received_complete_body()
+{
+	if (!this->_request.get_header("Transfer-Encoding").empty())
+	{
+		if (this->_buffer_stream.str().rfind("0" CRLF CRLF) != std::string::npos)
+		{
+			return true;
+		}
+	}
+	else if (!this->_request.get_header("Content-Length").empty())
+	{
+		std::string		content_length;
+		unsigned long	content_length_value;
+
+		content_length = this->_request.get_header("Content-Length");
+		content_length_value = std::strtoul(content_length.c_str(), NULL, 10);
+		if (content_length_value >= (this->_get_body_size()))
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+std::string Client::_identify_boundary_string()
+{
+	std::string							result;
+	std::pair<std::string, std::string>	kv_pair;
+	std::string							boundary_line;
+
+	result = this->_request.get_header("Content-Type");
+	if (result.empty());
+	{
+		return result;
+	}
+	if (trim_chars(result.substr(0, result.find(';')), WHITESPACE_CHARACTERS) != "multipart/form-data")
+	{
+		return result;
+	}
+	boundary_line = trim_chars(result.substr(result.find(';') + 1), WHITESPACE_CHARACTERS);
+	kv_pair = extract_key_value_pair(result, '=');
+	if (trim_chars(kv_pair.first, WHITESPACE_CHARACTERS) != "boundary")
+	{
+		return result;
+	}
+	return trim_chars(kv_pair.second, "\"");
+}
+
+void Client::_check_content_length_header_within_limits()
+{
+	std::string		content_length_header_value;
+	unsigned long	content_length_value_from_header;
+
+	content_length_header_value = this->_request.get_header("Content-Length");
+	content_length_value_from_header = std::strtoul(content_length_header_value.c_str(), NULL, 10);;
+	if (content_length_value_from_header > this->_common_server_config->client_max_body_size())
+	{
+		throw HTTPException(413, "Request entity too large");
+	}
+}
+
+void Client::_create_request_body()
+{
+	std::string	content_type;
+	std::string parsed_body_string;
+
+	if (!this->_request.get_header("Transfer-Encoding").empty())
+	{
+		parsed_body_string = this->_parse_chunked_request_body();
+		// this->_buffer_stream.str(this->_buffer_stream.str().substr(0, this->_buffer_stream.str().rfind("0" CRLF CRLF)));
+	}
+	else if (!this->_request.get_header("Content-Length").empty())
+	{
+		unsigned long content_length_value;
+
+		content_length_value = std::strtoul(this->_request.get_header("Content-Length").c_str(), NULL, 10);
+		// parsed_body_string = this->_buffer_stream.str().substr(0, content_length_value);
+		// this->_buffer_stream.str(this->_buffer_stream.str().substr(0, content_length_value));
+	}
+
+	content_type = this->_request.get_header("Content-Type");
+	if (content_type == "multipart/form-data")
+	{
+		std::string boundary_string;
+
+		boundary_string = this->_identify_boundary_string();
+		this->_request.set_body(RequestBodyFactory(parsed_body_string).build_multipart(boundary_string));
+		// this->_request.set_body(RequestBodyFactory(this->_buffer_stream.str()).build_multipart(boundary_string));
+	}
+	else if (content_type == "application/x-www-form-urlencoded")
+	{
+		this->_request.set_body(RequestBodyFactory(parsed_body_string).build_form_encoded());
+		// this->_request.set_body(RequestBodyFactory(this->_buffer_stream.str()).build_form_encoded());
+	}
+	return;
+}
+
+void Client::_parse_chunked_request_body(std::stringstream &stream)
+{
+	std::ostringstream 	oss;
+    std::string			line;
+    std::string			chunk_size_str;
+    std::size_t			chunk_size;
+    std::streampos      previous_read_pos;
+    std::streampos      original_pos;
+
+    previous_read_pos = stream.tellg();
+    original_pos = previous_read_pos;
+	while (getline_CRLF(stream, line) && !line.empty())
+	{
+        std::istringstream  chunk_line_stream(line.substr(0, line.find_first_of(';')));
+
+        chunk_line_stream >> std::hex >> chunk_size;
+        
+        if (chunk_line_stream.fail())
+		{
+            throw HTTPException(400, "Invalid chunk size format");
+        }
+
+        if (chunk_size == 0)
+		{
+            break;
+        }
+        
+		getline_CRLF(stream, line);
+		
+		if (stream.eof()) // premature eof when reading chunk body
+		{
+		    stream.clear();
+		    stream.seekg(previous_read_pos);
+		    break;
+		}
+
+		if (chunk_size != line.length())
+		{
+			throw HTTPException(400, "Chunk size and chunk data mismatch");
+		}
+        oss << line;
+        previous_read_pos = stream.tellg();
+    }
+
+	if (stream.eof()) // only triggers with incomplete chunk data size
+	{
+		stream.clear();
+	}
+	
+	stream.str(stream.str().replace(original_pos, previous_read_pos - original_pos, oss.str()));
+	stream.seekg(static_cast<std::size_t>(original_pos) + oss.str().length()); // problem here
+	stream.seekp(stream.str().length());
+}
+
+std::string Client::_identify_content_type()
+{
+	std::map<std::string, std::string>::iterator	header_iterator;
+	std::string										content_type_string;
+
+	content_type_string = this->_request.get_header("Content-Type");
+	if (content_type_string.empty())
+	{
+		return content_type_string;
+	}
+	content_type_string = content_type_string.substr(0, content_type_string.find(';'));
+	return content_type_string;
+}
+
+void Client::_check_request_body_headers()
+{
+	if (!this->_request.get_header("Content-Length").empty())
+	{
+		this->_check_content_length_header_within_limits();
+	}
+
+	{
+		std::string content_type;
+
+		content_type = this->_identify_content_type();
+		if (!content_type.empty() 
+			&& (content_type != "multipart/form-data"
+				|| content_type != "application/x-www-form-urlencoded"))
+		{
+			throw HTTPException(400, "Unsupported content-type");
+		}
+	}
+
+	{
+		std::string transfer_encoding;
+
+		transfer_encoding = this->_request.get_header("Transfer-Encoding");
+		if (!transfer_encoding.empty())
+		{
+			std::vector<std::string> temp = tokenise_str(transfer_encoding);
+
+			if (trim_chars(temp[temp.size() - 1], std::string(WHITESPACE_CHARACTERS) + ",") != "chunked")
+			{
+				throw HTTPException(400, "Chunked was not the last encoding type.");
+			}
+		}
+	}
+
+}
+
 void Client::_handle_method()
 {
 	if (this->_request.get_method() == "GET")
@@ -130,11 +633,24 @@ void Client::_handle_method()
 
 void Client::_match_location()
 {
-	std::string endpoint_str = this->_request.get_target(); // /destination/
-	std::size_t slash_index = endpoint_str.find_last_of('/');
+	std::string	target_str;
+	int			number_of_extensions;
+	std::string endpoint_str;
+	std::size_t	extension_pos;
+	std::size_t slash_index;
 
+	target_str = url_decode(this->_request.get_target());
+	number_of_extensions = std::count(target_str.begin(), target_str.end(), '.');
+	if (number_of_extensions > 1)
+	{
+		throw HTTPException(404, "Not a valid path");
+	}
+	extension_pos = target_str.find_first_of('.');
+	slash_index = target_str.find_last_of('/', extension_pos);
+	endpoint_str = target_str;
 	while (slash_index != std::string::npos)
 	{
+		endpoint_str = endpoint_str.substr(0, slash_index + 1);
 		if (this->_server_config->locations().find(endpoint_str) != this->_server_config->locations().end())
 		{
 			this->_endpoint = endpoint_str;
@@ -145,7 +661,6 @@ void Client::_match_location()
 			break;
 		}
 		slash_index = endpoint_str.find_last_of('/', slash_index - 1);
-		endpoint_str = endpoint_str.substr(0, slash_index + 1);
 	}
 	this->_endpoint = "";
 }
@@ -190,7 +705,9 @@ void Client::_handle_auto_index(const std::string &dir, std::stringstream &strea
 
 	auto_index_template.open(AUTOINDEX_TEMPLATE_PATH); // should probably be a directive in the config file..
 	if (!auto_index_template.is_open())
+	{
 		HTTPException(500, "Critical mess up. Couldn't open autoindex.html");
+	}
 	while (std::getline(auto_index_template, line))
 	{
 		std::size_t identifier_pos;
@@ -268,69 +785,51 @@ void Client::_handle_get(const std::string &file_path)
 	this->_response.set_status_code(200);
 }
 
-// example post Request
-// POST / HTTP/1.1
-// Content-Type: multipart/form-data; boundary=--------------------------244862981367507482243554
-// User-Agent: PostmanRuntime/7.33.0
-// Accept: */*
-// Cache-Control: no-cache
-// Postman-Token: e8856188-9a51-44a2-a4e3-c8d6a18513cb
-// Host: localhost:5000
-// Accept-Encoding: gzip, deflate, br
-// Connection: keep-alive
-// Content-Length: 213
-
-// ----------------------------244862981367507482243554
-// Content-Disposition: form-data; name=""; filename="testfile.txt"
-// Content-Type: text/plain
-
-// abc1234
-// ----------------------------244862981367507482243554--
-
-// shove everything into some kind of handler class, client has too many responsibilities at this point
-// class RequestBody;?
-
-
-void Client::_handle_post(const std::string &dir_path) // post still doesn't work... ignore for now, 
+void Client::_handle_post(const std::string &dir_path)
 {
-	std::string							content_type_line;
-	std::string							content_type;
-	std::string							boundary_key_value_string;
-	std::pair<std::string, std::string>	boundary_key_value_pair;
-	std::size_t boundary_begin_pos;
-	std::size_t	boundary_end_pos;
+	RequestBody request_body = this->_request.get_body();
 
-	content_type_line = this->_request.get_header("Content-Type");
-	trim_str(content_type_line, " \t\r\n");
-	content_type = content_type_line.substr(0, content_type_line.find_first_of(';'));
-	if (content_type != "multipart/form-data")
+	if (request_body.get_type() == "multipart/form-data")
 	{
-		throw HTTPException(501, "Unsupported content-type");
-	}
-	boundary_key_value_string = trim_str(content_type_line.substr(content_type_line.find_first_of(';') + 1), " \t");
-	try
-	{	
-		boundary_key_value_pair = extract_key_value_pair(boundary_key_value_string, '=');
-		boundary_key_value_pair.second = trim_str(boundary_key_value_pair.second, "\"");
-	}
-	catch(const std::exception& e)
-	{
-		throw HTTPException(400, "Malformed request");;
-	}
-	if (boundary_key_value_pair.first != "boundary")
-	{
-		throw HTTPException(400, "Malformed request");
-	}
-	boundary_begin_pos = this->_request.get_body_string().find(boundary_key_value_pair.second);
-	boundary_end_pos = this->_request.get_body_string().find(boundary_key_value_pair.second, boundary_begin_pos + boundary_key_value_pair.second.length() + 1);
+		for (std::map<int, RequestMultipart>::iterator it = request_body.get_index_multipart().begin(); it != request_body.get_index_multipart().end(); it++)
+		{
+			RequestMultipart	&file_part = it->second; // for readability;
+			std::string			filename;
+			std::size_t			forward_slash_pos;
 
-	std::ofstream	outfile;
-	std::string		destination_path;
-	
-	// what happens when file already exists?
-	// destination_path = dir_path + this->_request.??? how to extract file name?
-	outfile.open(dir_path.c_str()); // dir_path is just the plain directory path
-	outfile << this->_request.get_body_string().substr(boundary_begin_pos + boundary_key_value_pair.second.length() + 1, boundary_end_pos - 1);
+			filename = file_part.get_filename();
+			if (filename.length() == 0) // missing filename, happens with drag and drop file upload;
+			{
+				throw HTTPException(400, "Missing filename");
+			}
+			// prune filename to its terminal component for security
+			forward_slash_pos = filename.rfind("/");
+			if (forward_slash_pos != std::string::npos)
+			{
+				filename = filename.substr(forward_slash_pos + 1);
+			}
+			if (extract_file_extension(filename).length() == 0)
+			{
+				throw HTTPException(400, "Missing file extension");
+			}
+			if (!is_system_compatible_filename(filename))
+			{
+				throw HTTPException(400, "Filename incompatible with system");
+			}
+
+			std::ofstream	outfile;
+			std::string		full_path;
+			
+			full_path = dir_path + filename;
+			outfile.open(full_path.c_str());
+			if (!outfile.is_open())
+			{
+				throw HTTPException(400, "File already exists");
+			}
+			outfile << file_part.get_content();
+			outfile.close();
+		}
+	}
 	this->_response.set_status_code(201);
 }
 
@@ -407,7 +906,7 @@ void Client::_configure_common_config()
 	}
 	else
 	{
-		this->_common_server_config = static_cast<CommonServerConfig *>(const_cast<LocationConfig *>(&this->_server_config->locations().find(this->_endpoint)->second));
+		this->_common_server_config = static_cast<CommonServerConfig *>(const_cast<LocationConfig *>(&this->_server_config->locations().at(this->_endpoint)));
 	}
 }
 
@@ -516,241 +1015,6 @@ void Client::_initialize_cgi()
 			continue;
 		}
 		this->_cgi->add_envp(it->first, "HTTP_" + it->second);
-	}
-	this->_cgi->execute();
-}
-
-int	Client::get_fd() const
-{
-	return this->_fd;
-}
-
-Request const &Client::get_request() const
-{
-	return this->_request;
-}
-
-Request &Client::get_request()
-{
-	return this->_request;
-}
-
-Response &Client::get_response()
-{
-	return this->_response;
-}
-
-Client::ProcessState Client::get_process_state() const
-{
-	return this->_state;
-}
-
-ServerConfig const* Client::get_server_config() const
-{
-	return this->_server_config;
-}
-
-std::string	Client::get_server_ip() const
-{
-	return this->_server_ip;
-}
-
-std::string	Client::get_client_ip() const
-{
-	return this->_client_ip;
-}
-
-int	Client::get_server_port() const
-{
-	return this->_server_port;
-}
-
-int	Client::get_client_port() const
-{
-	return this->_client_port;
-}
-
-void Client::set_server_config(ServerConfig *server_config)
-{
-	this->_server_config = server_config;
-}
-
-void Client::set_process_state(const ProcessState &state)
-{
-	this->_state = state;
-}
-
-int Client::handle_request()
-{
-	std::auto_ptr<char> buffer(new char[this->_buffer_size + 1]);
-	std::size_t	bytes_read = 0;
-
-
-	std::memset(buffer.get(), 0, this->_buffer_size + 1);
-	if ((bytes_read = recv(this->_fd, buffer.get(), BUFFER_SIZE, MSG_NOSIGNAL)) <= 0)
-	{
-		return bytes_read;
-	}
-	this->_request.append_to_request(buffer.get());
-	try
-	{
-		if (this->_request.get_body_size() > this->_common_server_config->client_max_body_size())
-			throw HTTPException(413, "Request entity too large");
-		this->_request.process_request();
-	}
-	catch(const HTTPException& e)
-	{
-		this->_response.set_status_code(e.get_status_code());
-	}
-
-	if (this->_request.get_request_read_state() == Request::FINISHED || this->_response.get_status_code() > 0)
-	{
-		this->_state = VALIDATING_REQUEST;
-	}
-	return bytes_read;
-}
-
-void Client::handle_response()
-{
-	try
-	{
-		if (this->_state == VALIDATING_REQUEST)
-		{
-			this->_match_location();
-			this->_configure_common_config();
-			this->_is_method_allowed();
-			this->_dir_path = this->_common_server_config->root() + (this->_endpoint.empty() ? "/" : this->_endpoint); // public/ or public/some_place/
-			this->_state = PROCESSING_RESPONSE;
-		}
-
-		if (this->_state == PROCESSING_RESPONSE)
-		{
-			if (this->_request.get_target_file().length() > 0 && this->_is_target_cgi()) // if there was a file destination and that file is a cgi script
-			{
-				this->_initialize_cgi();
-				this->_cgi->execute();
-				this->_state = PROCESSING_CGI;
-			}
-			else if (this->_common_server_config->redirect().size() > 0)
-			{
-				this->_handle_redirect();
-				this->_state = SENDING_RESPONSE;
-			}
-			else
-			{
-				this->_handle_method();
-				this->_state = SENDING_RESPONSE;
-			}
-		}
-
-		if (this->_state == PROCESSING_CGI)
-		{			
-			if (this->_cgi->get_state() == CGI::PROCESSING)
-			{
-				try
-				{
-					this->_cgi->check_completed();
-				}
-				catch (std::exception const& e)
-				{
-					throw HTTPException(500, "CGI error");
-				}
-			}
-
-			struct timeval  timeout = {};
-			int read_fd = this->_cgi->get_read_fd();
-			int	write_fd = this->_cgi->get_write_fd();
-			int max_fd = (read_fd > write_fd) ? read_fd : write_fd;
-			fd_set write_set;
-			fd_set read_set;
-			int activity;
-
-			FD_ZERO(&read_set);
-			FD_ZERO(&write_set);
-
-			if (read_fd > STDERR_FILENO)
-			{
-				FD_SET(read_fd, &read_set);
-			}
-
-			if (write_fd > STDERR_FILENO)
-			{
-				FD_SET(write_fd, &write_set);
-			}
-
-			if ((activity = select(max_fd + 1, &read_set, &write_set, NULL, &timeout)) == -1 && errno != EINTR)
-			{
-				throw HTTPException(500, "CGI error");
-			}
-
-			if (FD_ISSET(write_fd, &write_set))
-			{
-				char *buffer = NULL;
-
-				if (this->_request.get_body_stream().read(buffer, CGI_READ_BUFFER_SIZE))
-				{
-					this->_cgi->write_to_cgi(buffer);
-					this->_cgi->update_time_since_last_activity(time(NULL));
-				}
-				else
-				{
-					this->_cgi->close_write_fd();
-				}
-			}
-
-			if (FD_ISSET(read_fd, &read_set))
-			{
-				this->_cgi->read_cgi_stream(CGI_READ_BUFFER_SIZE);
-				this->_cgi->update_time_since_last_activity(time(NULL));
-			}
-
-			if ((time(NULL) - this->_cgi->get_time_since_last_activity()) > CGI_TIMEOUT)
-			{
-				throw HTTPException(500, "CGI error");
-			}
-
-			if (this->_cgi->get_state() == CGI::FINISHED)
-			{
-				try
-				{
-					this->_cgi->process_output();
-				}
-				catch (const std::exception &e)
-				{
-					throw HTTPException(500, "Some kind of cgi error");
-				}
-				this->_response.set_header(this->_cgi->get_headers());
-				this->_response.set_body_stream(std::auto_ptr<std::istream>(new std::stringstream(this->_cgi->get_body_string())));
-				this->_state = SENDING_RESPONSE;
-			}
-		}
-	}
-	catch (const HTTPException &e)
-	{
-		this->_response.set_status_code(e.get_status_code());
-		this->_state = PROCESSING_EXCEPTION;
-	}
-	
-	if (this->_state == PROCESSING_EXCEPTION)
-	{
-		this->_handle_exception();
-		this->_state = SENDING_RESPONSE;
-	}
-
-	if (this->_state == SENDING_RESPONSE && this->_response.get_message_format() == NULL)
-	{
-		this->_response.set_header("Connection", "Closed");
-		this->_response.construct_response_message_format();
-	}
-
-	if (this->_state == SENDING_RESPONSE)
-	{
-		std::string read_response_str = this->_response.read_response(this->_buffer_size);
-		send(this->_fd, read_response_str.c_str(), read_response_str.length(), MSG_NOSIGNAL);
-	}
-	if (this->_response.get_write_state() == Response::FINISHED)
-	{
-		this->_state = FINISHED_PROCESSING;
 	}
 }
 

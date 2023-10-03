@@ -3,32 +3,21 @@
 namespace ft
 {
 
-RequestLine::RequestLine() : method(), target(), uri(), protocol(), target_file(), query() {}
-
-RequestLine::~RequestLine(){}
-
-RequestLine::RequestLine(const RequestLine& ref) : method(ref.method), target(ref.target), uri(ref.uri), protocol(ref.protocol), target_file(ref.target_file), query(ref.query)
-{ 
-	*this = ref;
-}
-
-RequestLine &RequestLine::operator=(const RequestLine& ref)
-{
-	if (this != &ref)
-	{
-		this->method = ref.method;
-		this->target = ref.target;
-		this->uri = ref.uri;
-		this->protocol = ref.protocol;
-		this->target_file = ref.target_file;
-		this->query = ref.query;
-	}
-	return *this;
-}
-
-Request::Request() : _read_state(Request::READING), _request_start_line(), _headers(), _buffer_stream(), _body(), _header_break_index(std::string::npos){}
+Request::Request() : _request_start_line(), _headers(), _buffer_stream(), _body(), _header_break_index(std::string::npos){}
 
 Request::~Request(){}
+
+void Request::construct_message_format(const std::string &message_format_string)
+{
+	std::stringstream ss(message_format_string);
+
+	this->_parse_request_line(ss);
+	this->_parse_request_headers(ss);
+	if (this->_headers.find("Host") == this->_headers.end())
+	{
+		throw HTTPException(400 , "Host field not found.");
+	}
+}
 
 std::string Request::_validate_method(const std::string &method)
 {
@@ -51,6 +40,7 @@ std::string Request::_validate_method(const std::string &method)
 			return method;
 		}
 	}
+
 	throw HTTPException(400, "Invalid method");
 	return method;
 }
@@ -61,25 +51,24 @@ std::string	Request::_extract_target(const std::string &uri_string)
 }
 
 // TO DO: double check if indexing is correct..
-std::map<std::string, std::string> Request::_extract_query(const std::string &uri_string)
+std::map<std::string, std::string> Request::_extract_query(const std::string &uri_string) // refactor this
 {
 	std::map<std::string, std::string> return_map;
 	std::size_t query_begin_index;
 	std::size_t next_index;
+	std::pair<std::string, std::string> key_value_pair;
 
 	query_begin_index = uri_string.find('?');
 	while (query_begin_index != std::string::npos)
 	{
 		next_index = uri_string.find('&', query_begin_index + 1);
-		try
-		{
-			return_map.insert(extract_key_value_pair(uri_string.substr(query_begin_index + 1, next_index), '='));
-		}
-		catch(const std::exception& e)
-		{
-			throw HTTPException(400, e.what());
-		}
+		key_value_pair = extract_key_value_pair(uri_string.substr(query_begin_index + 1, next_index), '=');
 		query_begin_index = next_index;
+		if (key_value_pair.first == "")
+		{
+			continue;
+		}
+		return_map.insert(key_value_pair);
 	}
 	return return_map;
 }
@@ -110,66 +99,73 @@ std::string	Request::_extract_target_file(const std::string &uri_string)
 	return target_file_name;
 }
 
-void Request::_parse_request_line()
+void Request::_parse_request_line(std::stringstream &ss)
 {
-	std::vector<std::string> request_line_tokens;
-	std::string line;
+	std::vector<std::string>	request_line_tokens;
+	std::string					line;
 
-	ft::getline_CRLF(this->_buffer_stream, line);
+	getline_CRLF(ss, line);
 	request_line_tokens = tokenise_str(line);
 	if (request_line_tokens.size() != 3)
 	{
 		throw HTTPException(400, "Invalid request start line");
 	}
-	std::string decoded_uri = url_decode(request_line_tokens[1]);
-
-	this->_request_start_line.method = this->_validate_method(request_line_tokens[0]);
-	this->_request_start_line.uri = decoded_uri;
-	this->_request_start_line.target = this->_extract_target(decoded_uri);
-	this->_request_start_line.query = this->_extract_query(decoded_uri);
-	this->_request_start_line.target_file = this->_extract_target_file(decoded_uri);
-	this->_request_start_line.protocol = request_line_tokens[2]; // lower priority might want to validate
+	this->_request_start_line.construct(line);
 }
 
 void Request::_validate_header_field(const std::pair<std::string, std::string> &header_pair)
 {
+	if (header_pair.first == "")
+	{
+		throw HTTPException(400, "Missing header key");
+	}
 	if (header_pair.first == "Content-Length")
 	{
-		char *end;
-		long int content_length = std::strtol(header_pair.second.c_str(), &end, 10);
+		char		*end;
+		long int	content_length = std::strtol(header_pair.second.c_str(), &end, 10);
 
 		if (content_length < 0)
-			throw std::runtime_error("Invalid Content-Length value");
+		{
+			throw HTTPException(400, "Invalid Content-Length value");
+		}
 		else if (content_length == 0 && std::strcmp(end, "\0") != 0)
-			throw std::runtime_error("Invalid conversion");
+		{
+			throw HTTPException(400, "Invalid conversion");
+		}
 	}
 }
 
-void Request::_handle_duplicate_headers(const std::string &key, std::string &original_value, const std::string &duplicate_value)
+void Request::_handle_duplicate_headers(const std::string &key, const std::string &original_value, const std::string &duplicate_value)
 {
 	if (key == "Content-Length")
 	{
 		if (original_value == duplicate_value)
+		{
 			return;
+		}
 		else
+		{
 			throw HTTPException(400, "Multiple content-length headers");
+		}
 	}
 }
 
-void Request::_parse_request_headers()
+void Request::_parse_request_headers(std::stringstream &ss)
 {
-	std::string line;
+	std::string	line;
 	std::size_t separator_index;
 	std::size_t whitespace_index;
 	std::pair<std::string, std::string> header_field_pair;
 	std::pair<std::map<std::string, std::string>::iterator,bool> insert_return;
 
-	while (getline_CRLF(this->_buffer_stream, line) && !line.empty())
+	while (getline_CRLF(ss, line) && !line.empty())
 	{
 		separator_index = line.find(':');
-		whitespace_index = line.find_first_of(" \n\t\f\r\v");
+		whitespace_index = line.find_first_of(WHITESPACE_CHARACTERS);
 		if (whitespace_index < separator_index)
+		{
 			throw HTTPException(400, "Whitespace found before : during header parsing");
+		}
 		header_field_pair = extract_key_value_pair(line, ':');
 		this->_validate_header_field(header_field_pair);
 		if (header_field_pair.first == "Host")
@@ -179,32 +175,34 @@ void Request::_parse_request_headers()
 		}
 		insert_return = this->_headers.insert(header_field_pair);
 		if (insert_return.second == false)
+		{
 			this->_handle_duplicate_headers((*insert_return.first).first, (*insert_return.first).second, header_field_pair.second);
+		}
     }
-	getline_CRLF(this->_buffer_stream, line);
 }
 
-void Request::_parse_chunked_request_body()
+std::string Request::_parse_chunked_request_body()
 {
-    std::string line;
-    std::string chunk_size_str;
-    std::size_t chunk_size = 0;
+	std::ostringstream 	oss;
+    std::string			line;
+    std::string			chunk_size_str;
+    std::size_t			chunk_size;
 
 	while (getline_CRLF(this->_buffer_stream, line) && !line.empty())
 	{
-        std::istringstream chunkLineStream(line);
-        chunkLineStream >> std::hex >> chunk_size_str;
+        std::istringstream chunk_line_stream(line);
+        chunk_line_stream >> std::hex >> chunk_size_str;
 
-        if (chunkLineStream.fail()) {
-            // Invalid chunk size format
+        if (chunk_line_stream.fail())
+		{
             std::cerr << "Invalid chunk size format: " << line << std::endl;
-            return;
+            throw HTTPException(400, "Invalid chunk size format");
         }
 
         chunk_size = hex_str_to_ulong(chunk_size_str);
 
-        if (chunk_size == 0) {
-            // End of chunks
+        if (chunk_size == 0)
+		{
             break;
         }
 
@@ -216,49 +214,64 @@ void Request::_parse_chunked_request_body()
 			throw HTTPException(400, "Chunk size and chunk data mismatch");
 		}
 	
-        this->_body.write(chunk_data.data(), chunk_size);
+        oss.write(chunk_data.data(), chunk_size);
 		getline_CRLF(this->_buffer_stream, line);
     }
+	return oss.str();
 }
 
-void Request::_parse_encoded_request_body()
+std::string Request::_parse_encoded_request_body()
 {
-	this->_parse_chunked_request_body();
+	return this->_parse_chunked_request_body();
 	// this->_parse_request_headers();
 }
 
-void Request::_parse_request()
+std::string Request::_identify_content_type()
 {
-	this->_parse_request_line();
-	this->_parse_request_headers();
-	if (this->_headers.find("Host") == this->_headers.end())
-		throw HTTPException(400 , "Host field not found.");
-	this->_headers.insert(std::make_pair("Content-Type", "text/plain; charset=US-ASCII"));
+	std::map<std::string, std::string>::iterator	header_iterator;
+	std::string										content_type_string;
+
+	if ((header_iterator = this->_headers.find("Content-Type")) == this->_headers.end());
+	{
+		return content_type_string;
+	}
+	content_type_string = header_iterator->second;
+	content_type_string = content_type_string.substr(0, content_type_string.find(';'));
+	return content_type_string;
+}
+
+std::string Request::_identify_boundary_string()
+{
+	std::map<std::string, std::string>::iterator	header_iterator;
+	std::string										result;
+
+	if ((header_iterator = this->_headers.find("Content-Type")) == this->_headers.end());
+	{
+		return result;
+	}
+	result = header_iterator->second;
+	result = result.substr(result.find(';') + 1);
+	return trim_chars(result, WHITESPACE_CHARACTERS);
 }
 
 std::string Request::get_method() const
 {
-	return this->_request_start_line.method;
-}
-
-std::string Request::get_uri() const
-{
-	return this->_request_start_line.uri;
+	return this->_request_start_line.get_method();
 }
 
 std::string Request::get_target() const
 {
-	return this->_request_start_line.target;
+	return this->_request_start_line.get_target();
 }
 
 std::string Request::get_target_file() const
 {
-	return this->_request_start_line.target_file;
+	return this->_request_start_line.get_target_file();
 }
 
 std::string Request::get_protocol() const
 {
-	return this->_request_start_line.protocol;
+	return this->_request_start_line.get_protocol();
 }
 
 std::size_t Request::get_body_size() const
@@ -267,18 +280,25 @@ std::size_t Request::get_body_size() const
 	std::size_t header_break_index = this->_buffer_stream.str().find(CRLF CRLF);
 
 	if (header_break_index == std::string::npos)
+	{
 		return body_size;
+	}
 	body_size = this->_buffer_stream.str().length() - body_size + 5;
 	return body_size;
 }
 
 std::string Request::get_header(const std::string &key) const
 {
-	std::map<std::string, std::string>::mapped_type	value;
-	std::map<std::string, std::string>::const_iterator	it;
-
-	it = this->_headers.find(key);
-	value = (it != this->_headers.end()) ? it->second : "" ;
+	std::string		value;
+	
+	try
+	{
+		value = this->_headers.at(key);
+	}
+	catch (const std::out_of_range &e)
+	{
+		value = "";
+	}
 	return value;
 }
 
@@ -287,105 +307,49 @@ std::map<std::string, std::string> Request::get_headers() const
 	return this->_headers;
 }
 
-std::stringstream const &Request::get_body_stream() const
+std::stringstream &Request::get_raw_body_stream()
 {
-	return this->_body;
+	return this->_body->get_raw_stream();
 }
 
-std::stringstream &Request::get_body_stream()
+std::string Request::get_raw_body_string() const
 {
-	return this->_body;
+	return this->_body->get_raw_string();
 }
 
-std::string Request::get_body_string() const
+RequestBody	Request::get_body() const
 {
-	return this->_body.str();
+	return *this->_body;
 }
 
 std::string Request::get_query_string() const
 {
-	return this->_request_start_line.uri.substr(this->_request_start_line.uri.find_first_of('?') + 1) ;
+	return this->_request_start_line.get_query_string();
 }
 
 std::string Request::get_query_param(const std::string key) const
 {
 	std::string value;
-	std::map<std::string, std::string>::const_iterator	it;
 	
-	it = this->_request_start_line.query.find(key);
-	value = (it != this->_request_start_line.query.end()) ? it->second : "";
+	try
+	{
+		value = this->_request_start_line.get_query_map().at(key);
+	}
+	catch (const std::out_of_range &e)
+	{
+		value = "";
+	}
 	return value;
 }
 
-Request::RequestReadState Request::get_request_read_state() const
+bool Request::has_body_headers() const
 {
-	return this->_read_state;
+	return this->_headers.find("Transfer-Encoding") != this->_headers.end() || this->_headers.find("Content-Length") != this->_headers.end();
 }
 
-void Request::set_request_read_state(Request::RequestReadState state)
+void Request::set_body(RequestBody *request_body_ptr)
 {
-	this->_read_state = state;
-}
-
-void Request::append_to_request(std::string str)
-{
-	this->_buffer_stream << str;
-}
-
-void Request::process_request()
-{
-	if (this->_header_break_index == std::string::npos)
-	{
-		this->_header_break_index = this->_buffer_stream.str().find(CRLF CRLF);
-		if (this->_header_break_index == std::string::npos)
-			return;
-	}
-
-	try
-	{
-		if (this->_headers.size() == 0)
-		{
-			this->_parse_request();
-		}
-
-		std::map<std::string, std::string>::iterator transfer_encoding;
-		std::map<std::string, std::string>::iterator content_length;
-
-		transfer_encoding = this->_headers.find("Transfer-Encoding");
-		content_length = this->_headers.find("Content-Length");
-		if (transfer_encoding == this->_headers.end()
-			&& content_length == this->_headers.end())
-		{
-			this->_read_state = FINISHED;
-			return;
-		}
-		
-		if (transfer_encoding != this->_headers.end())
-		{
-			std::vector<std::string> temp = tokenise_str(transfer_encoding->second);
-			if (temp[temp.size() - 1] != "chunked")
-			{
-				throw HTTPException(400, "Chunked was not the last encoding type.");
-			}
-			else if (this->_buffer_stream.str().rfind("0" CRLF CRLF) != std::string::npos)
-			{
-				this->_parse_encoded_request_body();
-				this->_read_state = FINISHED;
-			}
-		}
-		else if ((content_length != this->_headers.end())
-				&& (std::strtoul(content_length->second.c_str(), NULL, 10) == (this->_buffer_stream.str().length() - this->_header_break_index + 4)))
-		{
-			this->_body.str(this->_buffer_stream.str().substr(this->_header_break_index + 4));
-			this->_read_state = FINISHED;
-		}
-		this->_buffer_stream.str("");
-	}
-	catch (const HTTPException& e)
-	{
-		this->_read_state = FINISHED;
-		throw e;
-	}	
+	this->_body.reset(request_body_ptr);
 }
 
 }

@@ -21,9 +21,10 @@ class CommonServerConfig;
 class Client
 {
 	public:
-		enum ProcessState
+		enum ClientState
 		{
-			PROCESSING_REQUEST,
+			READING_REQUEST_HEADERS,
+			READING_REQUEST_BODY,
 			VALIDATING_REQUEST,
 			PROCESSING_RESPONSE,
 			PROCESSING_EXCEPTION,
@@ -40,7 +41,7 @@ class Client
 		Response const				&get_response() const;
 		Request						&get_request();
 		Response					&get_response();
-		ProcessState				get_process_state() const;
+		ClientState					get_client_state() const;
 		ServerConfig const*			get_server_config() const;
 		std::string					get_server_ip() const;
 		std::string					get_client_ip() const;
@@ -48,7 +49,7 @@ class Client
 		int							get_client_port() const;
 
 		void						set_server_config(ServerConfig *server_config);
-		void						set_process_state(ProcessState const &state);
+		void						set_client_state(ClientState const &state);
 
 		int							handle_request();
 		void 						handle_response();
@@ -58,8 +59,9 @@ class Client
 
 		static const std::map<std::string, std::string>	_fill_mime_type_map();
 
-		ProcessState				_state;
+		ClientState					_state;
 		int							_fd;
+		std::stringstream			_buffer_stream;
 		CommonServerConfig			*_common_server_config;
 		ServerConfig				*_server_config;
 		Request						_request;
@@ -91,6 +93,16 @@ class Client
 		std::string					_extract_binary_path_from_config(const std::string &file_extension);
 		std::string					_translate_binary_path();
 		std::string 				_get_cgi_path_info();
+		std::size_t 				_get_body_size();
+		void 						_check_body_size_within_limits();
+		bool						_has_full_message_format_received();
+		bool						_has_received_complete_body();
+		std::string					_identify_boundary_string();
+		void						_create_request_body();
+		void						_check_content_length_header_within_limits();
+		void 						_parse_chunked_request_body(std::stringstream &stream);
+		std::string					_identify_content_type();
+		void						_check_request_body_headers();
 
 };
 
