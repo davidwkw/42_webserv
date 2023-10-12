@@ -14,29 +14,24 @@ class Response
 	public:
 		static const std::map<int, std::string> _fill_reason_phrase_map();
 
-		enum ResponseWriteState
-		{
-			WRITING,
-			FINISHED
-		};
-
 		Response();
 		Response(float protocol_version);
 		~Response();
 
 		void				construct_response_message_format();
 		std::string			read_response(std::size_t buffer_size);
+		void				unread_response(std::size_t	size);
 
 		std::istream 		*get_message_format() const;
 		std::istream const	*get_body_stream() const;
 		std::istream 		*get_body_stream();
-		ResponseWriteState	get_write_state() const;
 		int					get_status_code() const;
+		bool				has_been_completely_read() const;
 
 		void 				set_status_code(const int &code);
 		void				set_body_stream(std::istream *body_stream);
 		void				set_body_stream(std::auto_ptr<std::istream> body_stream);
-		void				set_header(const std::map<std::string, std::string> &header_map);
+		void				append_headers(const std::map<std::string, std::string> &header_map);
 		void				set_header(const std::string &key, const std::string &value);
 		void				remove_header(const std::string &key);
 		
@@ -48,7 +43,6 @@ class Response
 		std::map<std::string, std::string>		_headers;
 		std::auto_ptr<std::stringstream>		_message_format;
 		std::auto_ptr<std::istream>				_body_stream;
-		ResponseWriteState						_write_state;
 
 };
 

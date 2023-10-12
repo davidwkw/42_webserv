@@ -81,10 +81,7 @@ std::map<std::string, std::string> Config::_init_directive_defaults(){
 	return fill_map;
 }
 
-Config::Config() : _directives()
-{
-	_fill_directive_defaults(this->_directives, Config::all_directives_set);
-}
+Config::Config() : _directives(){}
 
 Config::~Config(){}
 
@@ -105,11 +102,10 @@ Config &Config::operator=(const Config &ref)
 Config::Config(const std::map<std::string, std::string> &directives) : _directives()
 {
 	this->_directives = directives;
-	_fill_directive_defaults(this->_directives, Config::all_directives_set);
 }
 
-Config::Config(const std::map<std::string, std::string> &directives, std::set<std::string> inclusion_set) : _directives() {
-	
+Config::Config(const std::map<std::string, std::string> &directives, std::set<std::string> inclusion_set) : _directives()
+{
 	std::map<std::string, std::string>::const_iterator cit;
 	std::pair<std::string, std::string> temp;
 
@@ -119,33 +115,37 @@ Config::Config(const std::map<std::string, std::string> &directives, std::set<st
 		if (cit != directives.end())
 			this->_directives.insert(*cit);
 	}
-	_fill_directive_defaults(this->_directives, inclusion_set);
 }
 
-std::map<std::string, std::string> Config::directives() const{
+std::map<std::string, std::string> Config::directives() const
+{
 	return this->_directives;
 }
 
-void Config::add_directive(std::pair<std::string, std::string> directive){
+void Config::add_directive(std::pair<std::string, std::string> directive)
+{
 	this->_directives.insert(directive);
 }
 
-std::pair<std::string, std::string> Config::parse_directive(const std::string &directive){
+std::pair<std::string, std::string> Config::parse_directive(const std::string &directive)
+{
 	std::stringstream 				temp;
 	std::string 					word;
 	std::string 					k;
 	std::string						v;
 
-	temp.str(trim_str(directive, " \n\t"));
+	temp.str(trim_chars(directive, WHITESPACE_CHARACTERS));
 	temp >> k;
-	while (temp >> word){
+	while (temp >> word)
+	{
 		v += (v.empty() ? "" :  " " ) + word;
 	}
 	
 	return std::pair<std::string, std::string>(k, v);
 }
 
-std::map<std::string, std::string> Config::parse_all_directives(const std::string &str, const std::set<std::string> &inclusion_set){
+std::map<std::string, std::string> Config::parse_all_directives(const std::string &str, const std::set<std::string> &inclusion_set)
+{
 	std::map<std::string, std::string> container;
 	std::size_t start_index = 0;
 	std::size_t delimiter_index = start_index;
@@ -155,88 +155,126 @@ std::map<std::string, std::string> Config::parse_all_directives(const std::strin
   	while ((delimiter_index = str.find_first_of(";{}", delimiter_index)) != std::string::npos)
 	{
 		captured_directive = str.substr(start_index, delimiter_index - start_index);
-		if (str[delimiter_index] == ';'){
-			directive_pair = Config::parse_directive(trim_str(captured_directive, " \n\t"));
+		if (str[delimiter_index] == ';')
+		{
+			directive_pair = Config::parse_directive(trim_chars(captured_directive, WHITESPACE_CHARACTERS));
 		}
 		else if (str[delimiter_index] == '{')
 		{
-			captured_directive = str_char_limit_span(str.c_str() + delimiter_index, '{', '}');
-			if (captured_directive.empty() == true)
+			captured_directive = str_limit_span(str.c_str() + delimiter_index, '{', '}');
+			if (captured_directive.empty())
+			{
 				throw std::runtime_error("[Config] Missing } found in configuration file");
+			}
 			delimiter_index += captured_directive.length() + 2;
 			continue;
 		}
-		else
+		else if (str[delimiter_index] == '}')
+		{
 			throw std::runtime_error("[Config] Found } without { in configuration file");
+		}
 		if (inclusion_set.find(directive_pair.first) == inclusion_set.end())
+		{
 			throw std::runtime_error("[Config] Invalid directive " + directive_pair.first);
+		}
 		if (Config::normal_directives_set.find(directive_pair.first) != Config::normal_directives_set.end()
 			&& this->_directives.find(directive_pair.first) != this->_directives.end())
+		{
 			throw std::runtime_error("[Config] " + directive_pair.first + " directive already set");
-		else if (Config::array_directives_set.find(directive_pair.first) != Config::array_directives_set.end()
-			&& this->_directives.find(directive_pair.first) != this->_directives.end())
-			this->_directives[directive_pair.first] += ';' + directive_pair.second;
+		}
+		else if (Config::array_directives_set.find(directive_pair.first) != Config::array_directives_set.end())
+		{
+			std::string delim;
+		
+			try
+			{
+				container.at(directive_pair.first);
+				delim = ";";
+			}
+			catch (const std::out_of_range &e)
+			{
+				delim = "";
+			}
+
+			container[directive_pair.first] += delim + directive_pair.second;
+		}
 		else
-			this->_directives.insert(directive_pair);
+		{
+			container.insert(directive_pair);
+		}
 		++delimiter_index;
 		start_index = delimiter_index;
 	}
 	return container;
 }
 
-void Config::_fill_directive_defaults(std::map<std::string, std::string> &directive_ref, const std::set<std::string> &inclusion_set, const std::map<std::string, std::string> &defaults_map){
-
+void Config::fill_directives(std::map<std::string, std::string> &directive_ref, const std::set<std::string> &inclusion_set, const std::map<std::string, std::string> &directive_map)
+{
 	for (std::set<std::string>::const_iterator cit = inclusion_set.begin(); cit != inclusion_set.end(); ++cit)
 	{
-		std::map<std::string, std::string>::const_iterator dit = defaults_map.find(*cit);
-		if (dit != defaults_map.end())
+		std::map<std::string, std::string>::const_iterator dit = directive_map.find(*cit);
+		if (dit != directive_map.end())
 		{
 			directive_ref.insert(*dit);
 		}
 	}
 }
 
-std::multimap<std::string, std::string> Config::parse_block_directives(const std::string &str){
-	std::multimap<std::string, std::string>	return_map;
-	std::pair<std::string, std::string>	directive_pair;
-	std::size_t							start_index = 0;
-	std::size_t							delimiter_index = start_index;
+std::multimap<std::string, std::string> Config::parse_block_directives(const std::string &str)
+{
+	std::multimap<std::string, std::string>	result;
+	std::pair<std::string, std::string>		directive_pair;
+	std::size_t								start_index = 0;
+	std::size_t								delimiter_index = start_index;
 	
-	while ((delimiter_index = str.find_first_of("{}", delimiter_index)) != std::string::npos) // bug if } is found first
+	while ((delimiter_index = str.find_first_of("{}", delimiter_index)) != std::string::npos)
 	{
 		if (str[delimiter_index] == '}')
 		{
 			throw std::runtime_error("[Config]: Found } before {");
 		}
-		start_index = str.find_last_of('}', delimiter_index);
+		start_index = str.find_last_of("};", delimiter_index);
 		start_index %= std::string::npos;
 		start_index = (start_index > 0) ? start_index + 1 : start_index;
 		directive_pair.first = str.substr(start_index, delimiter_index - start_index);
-		directive_pair.first = trim_str(directive_pair.first, " \n\t");
-		directive_pair.second = str_char_limit_span(str.c_str() + delimiter_index, '{', '}');
-		return_map.insert(directive_pair);
+		directive_pair.first = trim_chars(directive_pair.first, WHITESPACE_CHARACTERS);
+		directive_pair.second = str_limit_span(str.c_str() + delimiter_index, '{', '}');
 		delimiter_index += directive_pair.second.size() + 2;
+		directive_pair.second = trim_chars(directive_pair.second, WHITESPACE_CHARACTERS);
+		result.insert(directive_pair);
 	}
-	return return_map;
+	return result;
 }
 
-const std::vector<std::string> Config::find_normal_directive(const std::string &directive_key) const {
+std::vector<std::string> Config::find_normal_directive(const std::string &directive_key) const
+{
 	std::map<std::string, std::string>::const_iterator cit;
 	std::vector<std::string> ret_vector;
 
 	cit = this->_directives.find(directive_key);
 	if (cit != this->_directives.end())
+	{
 		ret_vector = tokenise_str(cit->second);
+	}
 	return ret_vector;
 }
 
-const std::vector<std::vector<std::string > > Config::find_array_directive(const std::string &directive_key) const{
-	std::map<std::string, std::string>::const_iterator cit;
-	std::vector<std::vector<std::string> > ret_vector;
+std::vector<std::vector<std::string > > Config::find_array_directive(const std::string &directive_key) const
+{
+	std::map<std::string, std::string>::const_iterator	cit;
+	std::vector<std::vector<std::string> >				ret_vector;
 
 	cit = this->_directives.find(directive_key);
 	if (cit != this->_directives.end())
-		ret_vector.push_back(tokenise_str(cit->second, ';'));
+	{
+		std::vector<std::string> directive_vect;
+
+		directive_vect = tokenise_str(cit->second, ';');
+		for (std::vector<std::string>::iterator it = directive_vect.begin(); it != directive_vect.end(); it++)
+		{
+			ret_vector.push_back(tokenise_str(*it, ' '));
+		}
+	}
 	return ret_vector;
 }
 	

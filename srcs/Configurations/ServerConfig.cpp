@@ -6,10 +6,9 @@ namespace ft
 const char *ServerConfig::all_directives_array[] = {
 													"error_log",
 													"server_name",
-													"listen"
+													"listen",
 													"index",
 													"error_page",
-													"listen",
 													"redirect",
 													"cgi_bin",
 													"autoindex",
@@ -69,24 +68,30 @@ ServerConfig &ServerConfig::operator=(const ServerConfig &ref)
 	return *this;
 }
 
-ServerConfig::ServerConfig(std::map<std::string, std::string> directives, const std::string &server_str) : CommonServerConfig(directives, ServerConfig::all_directives_set)
+ServerConfig::ServerConfig(std::map<std::string, std::string> directives, const std::string &server_str) : CommonServerConfig()
 {
 	this->_directives = Config::parse_all_directives(server_str, ServerConfig::all_directives_set);
 	this->_parse_location_conf(server_str);
+	Config::fill_directives(this->_directives, ServerConfig::all_directives_set, directives);
+	Config::fill_directives(this->_directives, ServerConfig::all_directives_set, Config::directive_defaults);
 }
 
 void 	ServerConfig::_parse_location_conf(const std::string &cached_string){
-	std::multimap<std::string, std::string> block_directives;
-	std::vector<std::string> identifier_tokens;
-	std::pair<std::string, LocationConfig> block_pair;
+	std::multimap<std::string, std::string>	block_directives;
+	std::vector<std::string>				identifier_tokens;
+	std::pair<std::string, LocationConfig>	block_pair;
 
 	block_directives = Config::parse_block_directives(cached_string);
 	for (std::multimap<std::string, std::string>::iterator it = block_directives.begin(); it != block_directives.end(); ++it){
 		identifier_tokens = tokenise_str(it->first);
 		if (identifier_tokens.size() != 2)
+		{
 			throw std::runtime_error("[ServerConfig] Invalid number of identifiers for this context");
+		}
 		else if (identifier_tokens[0] != "location")
+		{
 			throw std::runtime_error("[ServerConfig] Invalid block directive for this context");
+		}
 		else
 		{
 			block_pair.first = identifier_tokens[1];
@@ -96,31 +101,33 @@ void 	ServerConfig::_parse_location_conf(const std::string &cached_string){
 	}
 }
 
-const std::map<std::string, LocationConfig>	ServerConfig::locations() const
+std::map<std::string, LocationConfig>	ServerConfig::locations() const
 {
 	return this->_locations;
 }
 
-const std::set<std::string> ServerConfig::server_names() const
+std::set<std::string> ServerConfig::server_names() const
 {
 	std::vector<std::vector<std::string> >	temp;
-	std::set<std::string>					ret_set;
+	std::set<std::string>					result;
 	
 	temp = this->find_array_directive("server_name");
-	for (std::vector<std::vector<std::string> >::iterator it = temp.begin(); it != temp.end(); ++it){
-		for (std::vector<std::string>::iterator it2 = it->begin(); it2 != it->end(); ++it2){
-			ret_set.insert(*it2);
+	for (std::vector<std::vector<std::string> >::iterator it = temp.begin(); it != temp.end(); ++it)
+	{
+		for (std::vector<std::string>::iterator it2 = it->begin(); it2 != it->end(); ++it2)
+		{
+			result.insert(*it2);
 		}
 	}
-	return ret_set;
+	return result;
 }
 
-const std::vector<std::vector<std::string> > ServerConfig::listen() const
-{
+std::vector<std::vector<std::string> > ServerConfig::listen() const
+{	
 	return this->find_array_directive("listen");
 }
 
-const std::string ServerConfig::client_body_temp_path() const
+std::string ServerConfig::client_body_temp_path() const
 {
 	std::vector<std::string> temp_vect = this->find_normal_directive("client_body_temp_path");
 	if (temp_vect.size() != 0)
@@ -128,13 +135,17 @@ const std::string ServerConfig::client_body_temp_path() const
 	return "client_body_temp";
 }
 
-const std::vector<unsigned int> ServerConfig::ports() const
+std::vector<unsigned int> ServerConfig::ports() const
 {
+	std::vector<std::vector<std::string> >	listen_vect;
 	std::vector<unsigned int> ret_vector;
 
-	for (std::vector<std::vector<std::string> >::const_iterator cit = this->listen().begin(); cit != this->listen().end(); cit++)
+	listen_vect = this->listen();
+	for (std::vector<std::vector<std::string> >::iterator it = listen_vect.begin(); it != listen_vect.end(); it++)
 	{
-		ret_vector.push_back(std::strtoul(cit->back().c_str(), NULL, 10));
+		std::vector<std::string> &port = *it;
+
+		ret_vector.push_back(std::strtoul(port.front().c_str(), NULL, 10));
 	}
 	return ret_vector;
 }

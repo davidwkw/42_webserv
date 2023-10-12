@@ -40,6 +40,7 @@ std::string							str_to_uppercase(std::string str);
 void								str_replace_char(std::string &str, char old_char, char new_char);
 void								close_fd_helper(int fd);
 std::map<std::string, std::string>	parse_key_value_string(const std::string &kv_string, const char kv_seperator , const char kv_delim);
+bool								is_system_compatible_filename(const std::string &filename);
 
 template <typename T1, typename T2>
 bool check_empty_pair(const std::pair<T1, T2> &pair_to_be_checked)

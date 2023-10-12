@@ -58,12 +58,14 @@ LocationConfig &LocationConfig::operator=(const LocationConfig &ref)
 	return *this;
 }
 
-LocationConfig::LocationConfig(std::map<std::string, std::string> directives, const std::string &location_str) : CommonServerConfig(directives, LocationConfig::all_directives_set)
+LocationConfig::LocationConfig(std::map<std::string, std::string> directives, const std::string &location_str) : CommonServerConfig()
 {
 	this->_directives = Config::parse_all_directives(location_str, LocationConfig::all_directives_set);
+	Config::fill_directives(this->_directives, LocationConfig::all_directives_set, directives);
+	Config::fill_directives(this->_directives, LocationConfig::all_directives_set, Config::directive_defaults);
 }
 
-const std::vector<std::string> LocationConfig::client_body_temp_path() const
+std::vector<std::string> LocationConfig::client_body_temp_path() const
 {
 	return this->find_normal_directive("client_body_temp_path");
 }

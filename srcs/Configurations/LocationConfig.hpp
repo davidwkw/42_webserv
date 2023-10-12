@@ -29,7 +29,7 @@ class LocationConfig : public CommonServerConfig
 		LocationConfig &operator=(const LocationConfig &ref);
 		LocationConfig(std::map<std::string, std::string> directives, const std::string &server_str);
 
-		const std::vector<std::string>	client_body_temp_path() const;
+		std::vector<std::string>	client_body_temp_path() const;
 };
 
 }

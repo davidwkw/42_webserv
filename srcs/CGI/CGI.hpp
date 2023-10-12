@@ -13,6 +13,7 @@
 #include <memory>
 #include <cstring>
 #include <time.h>
+#include <cstdlib>
 
 #include "../../includes/macros.hpp"
 #include "../utils/utils.hpp"
@@ -27,7 +28,7 @@ class CGI
 		enum ProcessState
 		{
 			PROCESSING,
-			READING,
+			PROCESSING_COMPLETED,
 			FINISHED
 		};
 
@@ -42,7 +43,7 @@ class CGI
 		void					update_time_since_last_activity(const time_t &time);
 		void					write_to_cgi(const std::string &str);
 		void					read_cgi_stream(const size_t &val);
-		void					check_completed();
+		void					update_state();
 		void					close_write_fd();
 		void					close_read_fd();
 		void					process_output();

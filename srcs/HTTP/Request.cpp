@@ -228,15 +228,14 @@ std::string Request::_parse_encoded_request_body()
 
 std::string Request::_identify_content_type()
 {
-	std::map<std::string, std::string>::iterator	header_iterator;
 	std::string										content_type_string;
 
-	if ((header_iterator = this->_headers.find("Content-Type")) == this->_headers.end());
+	try
 	{
-		return content_type_string;
+		content_type_string = this->_headers.at("Content-Type");
+		content_type_string = content_type_string.substr(0, content_type_string.find(';'));
 	}
-	content_type_string = header_iterator->second;
-	content_type_string = content_type_string.substr(0, content_type_string.find(';'));
+	catch (const std::out_of_range &e){}
 	return content_type_string;
 }
 
@@ -245,12 +244,12 @@ std::string Request::_identify_boundary_string()
 	std::map<std::string, std::string>::iterator	header_iterator;
 	std::string										result;
 
-	if ((header_iterator = this->_headers.find("Content-Type")) == this->_headers.end());
+	try
 	{
-		return result;
+		result = this->_headers.at("Content-Type");
+		result = result.substr(result.find(';') + 1);
 	}
-	result = header_iterator->second;
-	result = result.substr(result.find(';') + 1);
+	catch(const std::out_of_range& e){}
 	return trim_chars(result, WHITESPACE_CHARACTERS);
 }
 
@@ -317,7 +316,7 @@ std::string Request::get_raw_body_string() const
 	return this->_body->get_raw_string();
 }
 
-RequestBody	Request::get_body() const
+RequestBody	&Request::get_body() const
 {
 	return *this->_body;
 }

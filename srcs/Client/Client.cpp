@@ -178,10 +178,10 @@ void Client::set_client_state(const ClientState &state)
 	this->_state = state;
 }
 
-int Client::handle_request()
+std::size_t Client::handle_request()
 {
 	std::auto_ptr<char>	buffer(new char[this->_buffer_size + 1]);
-	std::size_t			bytes_read = 0;
+	std::size_t			bytes_read;
 
 	std::memset(buffer.get(), 0, this->_buffer_size + 1);
 	if ((bytes_read = recv(this->_fd, buffer.get(), this->_buffer_size, MSG_NOSIGNAL)) <= 0)
@@ -197,8 +197,8 @@ int Client::handle_request()
 			{
 				return bytes_read;
 			}
-				this->_request.construct_message_format(this->_buffer_stream.str().substr(0, this->_buffer_stream.str().find(CRLF CRLF) + 2));
-				if (this->_request.get_method() == "POST" && this->_request.has_body_headers())
+			this->_request.construct_message_format(this->_buffer_stream.str().substr(0, this->_buffer_stream.str().find(CRLF CRLF) + 2));
+			if (this->_request.get_method() == "POST" && this->_request.has_body_headers())
 			{
 				this->_check_request_body_headers();	
 				this->_buffer_stream.clear();
@@ -207,11 +207,11 @@ int Client::handle_request()
 				this->_buffer_stream.seekp(this->_buffer_stream.str().length());
 				this->_state = READING_REQUEST_BODY;
 			}
-				else
-				{
-					this->_buffer_stream.str("");
-					this->_state = VALIDATING_REQUEST;
-				}
+			else
+			{
+				this->_buffer_stream.str("");
+				this->_state = VALIDATING_REQUEST;
+			}
 		}
 		else if (this->_state == READING_REQUEST_BODY)
 		{
@@ -219,14 +219,14 @@ int Client::handle_request()
 			{
 				this->_parse_chunked_request_body(this->_buffer_stream);
 			}
-				this->_check_body_size_within_limits(); // for chunked encoded, size checking will be inaccurate up to 7 + the length of the chunk-size line; would consider as a better than the alternative where a user can greatly exceed max size
+				this->_check_body_size_within_limits(); // for chunked encoded, size checking will be inaccurate up to 9 + the length of the chunk-size line; would consider as a better than the alternative where a user can greatly exceed max size
 			if (!this->_has_received_complete_body())
 			{
 				return bytes_read;	
 			}
 			this->_create_request_body();
 			this->_buffer_stream.str("");
-			this->_state == VALIDATING_REQUEST;
+			this->_state = VALIDATING_REQUEST;
 		}
 	}
 	catch(const HTTPException& e)
@@ -234,7 +234,7 @@ int Client::handle_request()
 		this->_response.set_status_code(e.get_status_code());
 	}
 
-	if (this->_request.get_request_state() == Request::FINISHED || this->_response.get_status_code() > 0)
+	if (this->_response.get_status_code() > 0)
 	{
 		this->_buffer_stream.str("");
 		this->_state = VALIDATING_REQUEST;
@@ -248,6 +248,7 @@ void Client::handle_response()
 	{
 		if (this->_state == VALIDATING_REQUEST)
 		{
+			// this->_ident // identify server
 			this->_match_location();
 			this->_configure_common_config();
 			this->_is_method_allowed();
@@ -379,20 +380,20 @@ void Client::handle_response()
 
 	if (this->_state == SENDING_RESPONSE)
 	{
-		std::size_t sent_length;
+		int sent_length;
 
 		std::string read_response_str = this->_response.read_response(this->_buffer_size);
-		sent_length = send(this->_fd, read_response_str.c_str(), read_response_str.length(), MSG_NOSIGNAL);
+		sent_length = send(this->_fd, read_response_str.c_str(), this->_buffer_size, MSG_NOSIGNAL);
 		if (sent_length == -1)
 		{
 			this->_state = FINISHED_PROCESSING;
 		}
-		else if (sent_length < this->_buffer_size)
+		else if (sent_length < static_cast<int>(this->_buffer_size))
 		{
-			// push back response buffer position
+			this->_response.unread_response(this->_buffer_size - sent_length);
 		}
 	}
-	if (this->_response.get_write_state() == Response::FINISHED)
+	if (this->_response.has_been_completely_read())
 	{
 		this->_state = FINISHED_PROCESSING;
 	}
@@ -451,7 +452,7 @@ std::string Client::_identify_boundary_string()
 	std::string							boundary_line;
 
 	result = this->_request.get_header("Content-Type");
-	if (result.empty());
+	if (result.empty())
 	{
 		return result;
 	}
@@ -488,16 +489,14 @@ void Client::_create_request_body()
 
 	if (!this->_request.get_header("Transfer-Encoding").empty())
 	{
-		parsed_body_string = this->_parse_chunked_request_body();
-		// this->_buffer_stream.str(this->_buffer_stream.str().substr(0, this->_buffer_stream.str().rfind("0" CRLF CRLF)));
+		this->_buffer_stream.str(this->_buffer_stream.str().substr(0, this->_buffer_stream.str().rfind("0" CRLF CRLF)));
 	}
 	else if (!this->_request.get_header("Content-Length").empty())
 	{
 		unsigned long content_length_value;
 
 		content_length_value = std::strtoul(this->_request.get_header("Content-Length").c_str(), NULL, 10);
-		// parsed_body_string = this->_buffer_stream.str().substr(0, content_length_value);
-		// this->_buffer_stream.str(this->_buffer_stream.str().substr(0, content_length_value));
+		this->_buffer_stream.str(this->_buffer_stream.str().substr(0, content_length_value));
 	}
 
 	content_type = this->_request.get_header("Content-Type");
@@ -506,13 +505,11 @@ void Client::_create_request_body()
 		std::string boundary_string;
 
 		boundary_string = this->_identify_boundary_string();
-		this->_request.set_body(RequestBodyFactory(parsed_body_string).build_multipart(boundary_string));
-		// this->_request.set_body(RequestBodyFactory(this->_buffer_stream.str()).build_multipart(boundary_string));
+		this->_request.set_body(RequestBodyFactory(this->_buffer_stream.str()).build_multipart(boundary_string));
 	}
 	else if (content_type == "application/x-www-form-urlencoded")
 	{
-		this->_request.set_body(RequestBodyFactory(parsed_body_string).build_form_encoded());
-		// this->_request.set_body(RequestBodyFactory(this->_buffer_stream.str()).build_form_encoded());
+		this->_request.set_body(RequestBodyFactory(this->_buffer_stream.str()).build_form_encoded());
 	}
 	return;
 }
@@ -703,7 +700,7 @@ void Client::_handle_auto_index(const std::string &dir, std::stringstream &strea
 	std::ifstream		auto_index_template;
 	std::string			line;
 
-	auto_index_template.open(AUTOINDEX_TEMPLATE_PATH); // should probably be a directive in the config file..
+	auto_index_template.open(AUTOINDEX_TEMPLATE_PATH);
 	if (!auto_index_template.is_open())
 	{
 		HTTPException(500, "Critical mess up. Couldn't open autoindex.html");
@@ -787,7 +784,7 @@ void Client::_handle_get(const std::string &file_path)
 
 void Client::_handle_post(const std::string &dir_path)
 {
-	RequestBody request_body = this->_request.get_body();
+	RequestBody &request_body = this->_request.get_body();
 
 	if (request_body.get_type() == "multipart/form-data")
 	{
@@ -892,21 +889,33 @@ void Client::_handle_redirect()
 {
 	std::stringstream	temp_stream;
 	std::size_t			status_code;
-	temp_stream << this->_common_server_config->redirect().at(0);
-	temp_stream >> status_code;
-	this->_response.set_header("Location", this->_common_server_config->redirect().at(1));
-	this->_response.set_status_code(status_code);
+
+	try
+	{
+		temp_stream << this->_common_server_config->redirect().at(0);
+		temp_stream >> status_code;
+		this->_response.set_header("Location", this->_common_server_config->redirect().at(1));
+		this->_response.set_status_code(status_code);
+	}
+	catch (const std::out_of_range &e)
+	{
+		throw HTTPException(500, "Misconfigured redirect");
+	}
 }
 
 void Client::_configure_common_config()
 {
-	if (this->_endpoint.empty())
+	this->_common_server_config = static_cast<CommonServerConfig *>(this->_server_config);
+	if (!this->_endpoint.empty())
 	{
-		this->_common_server_config = static_cast<CommonServerConfig *>(this->_server_config);
-	}
-	else
-	{
-		this->_common_server_config = static_cast<CommonServerConfig *>(const_cast<LocationConfig *>(&this->_server_config->locations().at(this->_endpoint)));
+		try
+		{
+			this->_common_server_config = static_cast<CommonServerConfig *>(const_cast<LocationConfig *>(&this->_server_config->locations().at(this->_endpoint)));
+		}
+		catch (const std::out_of_range &e)
+		{
+			return;
+		}
 	}
 }
 

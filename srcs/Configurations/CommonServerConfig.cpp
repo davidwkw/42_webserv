@@ -27,32 +27,32 @@ CommonServerConfig::CommonServerConfig(const std::map<std::string, std::string> 
 CommonServerConfig::CommonServerConfig(const std::map<std::string, std::string> &directives, std::set<std::string> inclusion_set) : Config(directives, inclusion_set)
 {}
 
-const std::vector<std::vector<std::string> > CommonServerConfig::error_page() const
+std::vector<std::vector<std::string> > CommonServerConfig::error_page() const
 {
 	return this->find_array_directive("error_page");
 }
 
-const std::vector<std::string> CommonServerConfig::try_files() const
+std::vector<std::string> CommonServerConfig::try_files() const
 {
 	return this->find_normal_directive("try_files");
 }
 
-const std::vector<std::string> CommonServerConfig::index() const
+std::vector<std::string> CommonServerConfig::index() const
 {
 	return this->find_normal_directive("index");
 }
 
-const std::vector<std::string> CommonServerConfig::error_log() const
+std::vector<std::string> CommonServerConfig::error_log() const
 {
 	return this->find_normal_directive("error_log");
 }
 
-const std::set<std::string>	CommonServerConfig::limit_except() const
+std::set<std::string>	CommonServerConfig::limit_except() const
 {
 	return std::set<std::string>(this->find_normal_directive("limit_except").begin(), this->find_normal_directive("limit_except").end());
 }
 
-const std::string CommonServerConfig::root() const
+std::string CommonServerConfig::root() const
 {
 	std::vector<std::string> temp_vect = this->find_normal_directive("root");
 	if (temp_vect.size() != 0)
@@ -60,7 +60,7 @@ const std::string CommonServerConfig::root() const
 	return "public";
 }
 
-const std::string CommonServerConfig::autoindex() const
+std::string CommonServerConfig::autoindex() const
 {
 	std::vector<std::string> temp_vect = this->find_normal_directive("autoindex");
 	if (temp_vect.size() != 0)
@@ -96,7 +96,7 @@ std::size_t CommonServerConfig::client_max_body_size() const // validation shoul
 	return value;
 }
 
-const std::vector<std::string> CommonServerConfig::redirect() const
+std::vector<std::string> CommonServerConfig::redirect() const
 {
 	std::vector<std::string> temp_vect = this->find_normal_directive("redirect");
 	if (temp_vect.size() == 1)
@@ -106,7 +106,7 @@ const std::vector<std::string> CommonServerConfig::redirect() const
 	return temp_vect;
 }
 
-const std::vector<std::vector<std::string> > CommonServerConfig::cgi() const
+std::vector<std::vector<std::string> > CommonServerConfig::cgi() const
 {
 	return this->find_array_directive("cgi_bin");
 }

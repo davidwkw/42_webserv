@@ -1,3 +1,3 @@
+refactor requestbodyfactory to return a common interface rather than a data object that has data structures of both multipart and form encoded part
 
-handle post still doesn't work, need to also extract filename from message body. make new class to handle? client starting to juggle too many responsibilities
-remember that request body closing boundary has trailing "--"
+should probably throw a detailed exception when dealing with request body rather than keep returning empty string

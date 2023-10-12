@@ -2,6 +2,7 @@
 
 #include <string>
 #include "RequestMultipart.hpp"
+#include "RequestMultipartFactory.hpp"
 #include "RequestBody.hpp"
 
 namespace ft

@@ -77,18 +77,14 @@ const std::map<int, std::string> Response::_fill_reason_phrase_map()
 	return container;
 }
 
-Response::Response() : _http_protocol(), _status_code(), _headers(), _message_format(NULL), _body_stream(NULL), _write_state(WRITING)
+Response::Response() : _http_protocol(), _status_code(), _headers(), _message_format(NULL), _body_stream(NULL)
 {}
 
-Response::Response(float protocol_version) : _http_protocol(protocol_version), _status_code(), _headers(), _message_format(NULL), _body_stream(NULL), _write_state(WRITING)
+Response::Response(float protocol_version) : _http_protocol(protocol_version), _status_code(), _headers(), _message_format(NULL), _body_stream(NULL)
 {}
 
 Response::~Response(){}
 
-Response::ResponseWriteState Response::get_write_state() const
-{
-	return this->_write_state;
-}
 
 int	Response::get_status_code() const
 {
@@ -130,7 +126,7 @@ void Response::set_header(const std::string &key, const std::string &value)
 	this->_headers[key] = value;
 }
 
-void Response::set_header(const std::map<std::string, std::string> &header_map)
+void Response::append_headers(const std::map<std::string, std::string> &header_map)
 {
 	for (std::map<std::string, std::string>::const_iterator it = header_map.begin(); it != header_map.end(); it++)
 	{
@@ -163,19 +159,57 @@ std::string Response::read_response(std::size_t buffer_size)
 	std::auto_ptr<char> buffer(new char[buffer_size + 1]);
 
 	std::memset(buffer.get(), 0, buffer_size + 1);
-	if (!this->_message_format.get())
+	if (this->_message_format->eof())
 	{
 		this->_body_stream->read(buffer.get(), buffer_size);
-		if (!this->_body_stream.get())
-		{
-			this->_write_state = FINISHED;
-		}
 	}
 	else
 	{
 		this->_message_format->read(buffer.get(), buffer_size);
 	}
 	return std::string(buffer.get());
+}
+
+void Response::unread_response(std::size_t unread_size)
+{
+
+	std::size_t	current_message_format_pos;
+	std::size_t	current_body_stream_pos;
+
+	current_message_format_pos = static_cast<std::size_t>(this->_message_format->tellg());
+	current_body_stream_pos = static_cast<std::size_t>(this->_body_stream->tellg());
+	if (!(*this->_message_format.get()))
+	{
+		if (!(*this->_body_stream.get()))
+		{
+			this->_body_stream->clear();
+		}
+
+		if (current_body_stream_pos >= unread_size)
+		{
+			this->_body_stream->seekg(current_body_stream_pos - unread_size);
+			return;
+		}
+		else
+		{
+			unread_size -= current_body_stream_pos;
+			this->_body_stream->seekg(0);
+			this->_message_format->clear();
+		}
+	}
+	if (current_message_format_pos >= unread_size)
+	{
+		this->_message_format->seekg(current_message_format_pos - unread_size);
+	}
+	else 
+	{
+		this->_message_format->seekg(0);
+	}
+}
+
+bool Response::has_been_completely_read() const
+{
+	return (*this->_message_format.get()) && (*this->_body_stream.get());
 }
 
 }

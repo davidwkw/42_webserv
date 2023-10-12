@@ -7,7 +7,7 @@ RequestLine::RequestLine() : _start_line(), _method(), _target(), _protocol(){}
 
 RequestLine::RequestLine(const std::string &request_line) : _start_line(request_line), _method(), _target(), _protocol()
 {
-	this->construct();
+	this->_construct();
 }
 
 RequestLine::~RequestLine(){}
@@ -60,10 +60,6 @@ std::string RequestLine::get_target_file() const
 
 	decoded_target = url_decode(this->_target);
 	count = std::count(decoded_target.begin(), decoded_target.end(), '.');
-	if (count > 1)
-	{
-		throw std::runtime_error("More that 1 ."); // replace with custom error
-	}
 	if (count == 0)
 	{
 		return target_file_name;
@@ -101,10 +97,15 @@ std::map<std::string, std::string> RequestLine::get_query_map() const
 	return result;
 }
 
+std::string RequestLine::get_query_string() const
+{
+	return this->_target.substr(this->_target.find_last_of('?') + 1);
+}
+
 float RequestLine::get_protocol_version() const
 {
-	float	result;
-	std::stringstream ss;
+	float				result;
+	std::stringstream	ss;
 
 	ss << this->_protocol.substr(this->_protocol.find_last_of('/') + 1);
 	ss >> result;
@@ -117,12 +118,22 @@ std::string RequestLine::get_decoded_target() const
 	return url_decode(this->_target);
 }
 
-void RequestLine::set_start_line(const std::string &line)
+void RequestLine::construct(const std::string &request_line)
 {
-	this->_start_line = line;
+	this->reset();
+	this->_start_line = request_line;
+	this->_construct();
 }
 
-void RequestLine::construct()
+void RequestLine::reset()
+{
+	this->_start_line = "";
+	this->_method = "";
+	this->_target = "";
+	this->_protocol = "";
+}
+
+void RequestLine::_construct()
 {
 	std::vector<std::string> request_line_tokens;
 
@@ -135,14 +146,30 @@ void RequestLine::construct()
 	this->_method = trim_chars(request_line_tokens[0], WHITESPACE_CHARACTERS);
 	this->_target = trim_chars(request_line_tokens[1], WHITESPACE_CHARACTERS);
 	this->_protocol = trim_chars(request_line_tokens[2], WHITESPACE_CHARACTERS);
+	this->_validate_method();
 }
 
-void RequestLine::reset()
+void RequestLine::_validate_method()
 {
-	this->_start_line = "";
-	this->_method = "";
-	this->_target = "";
-	this->_protocol = "";
+	const std::string valid_methods[8] = {
+		"OPTIONS",
+		"GET",
+		"HEAD",
+		"POST",
+		"PUT",
+		"DELETE",
+		"TRACE",
+		"CONNECT"
+	};
+
+	for (int i = 0; i < 8; i++)
+	{
+		if (this->_method.compare(valid_methods[i]) == 0)
+		{
+			return;
+		}
+	}
+	throw std::runtime_error("Invalid method");
 }
 
 }

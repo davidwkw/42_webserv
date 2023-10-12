@@ -40,7 +40,7 @@ class Request
 		std::string							get_query_string() const;
 		std::stringstream &					get_raw_body_stream();
 		std::string							get_raw_body_string() const;
-		RequestBody							get_body() const;
+		RequestBody							&get_body() const;
 
 		void								set_body(RequestBody *request_body_ptr);
 

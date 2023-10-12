@@ -11,73 +11,6 @@ CGI::~CGI()
 	close(this->_write_pipefd);
 }
 
-void CGI::_validate_header_field(const std::pair<std::string, std::string> &header_pair)
-{
-	if (header_pair.first == "Content-Length")
-	{
-		char *end;
-		long int content_length = std::strtol(header_pair.second.c_str(), &end, 10);
-
-		if (content_length < 0)
-			throw std::runtime_error("Invalid Content-Length value");
-		else if (content_length == 0 && std::strcmp(end, "\0") != 0)
-			throw std::runtime_error("Invalid conversion");
-	}
-}
-
-void CGI::_parse_headers()
-{
-	std::string														line;
-	std::size_t														separator_index;
-	std::size_t														whitespace_index;
-	std::pair<std::string, std::string>								header_field_pair;
-	std::pair<std::map<std::string, std::string>::iterator,bool>	insert_return;
-
-	while (getline_CRLF(this->_output_stream, line) && !line.empty())
-	{
-		separator_index = line.find(':');
-		whitespace_index = line.find_first_of(" \n\t\f\r\v");
-		if (whitespace_index < separator_index)
-			throw std::runtime_error("Whitespace found before : during header parsing");
-		header_field_pair = extract_key_value_pair(line, ':');
-		this->_validate_header_field(header_field_pair);
-		insert_return = this->_headers.insert(header_field_pair);
-    }
-	getline_CRLF(this->_output_stream, line);
-}
-
-std::auto_ptr<char *> CGI::_prepare_meta_variables()
-{
-	std::auto_ptr<char *>	env_arr(new char*[this->_envp.size() + 1]);
-	std::size_t				index = 0;
-
-	for (std::set<std::string>::iterator it = this->_envp.begin(); it != this->_envp.end(); it++)
-	{
-		env_arr.get()[index] = const_cast<char *>(it->c_str());
-		index++;
-	}
-	env_arr.get()[index] = NULL;
-
-	return env_arr;
-}
-
-std::auto_ptr<char *> CGI::_prepare_cgi_arg()
-{
-	std::auto_ptr<char *> args(new char*[1 + this->_args.size() + 1]);
-	std::size_t	index = 0;
-
-	args.get()[index] = const_cast<char *>(this->_binary.c_str());
-	index++;
-	for (std::vector<std::string>::iterator it = this->_args.begin(); it != this->_args.end(); it++)
-	{
-		args.get()[index] = const_cast<char *>(it->c_str());
-		index++;
-	}
-	args.get()[index] = NULL; 
-
-	return args;
-}
-
 CGI::ProcessState CGI::get_state() const
 {
 	return this->_state;
@@ -212,12 +145,12 @@ void CGI::execute()
 		args = this->_prepare_cgi_arg();
 
 		execve(this->_binary.c_str(), args.get(), meta_envp.get());
-		throw HTTPException(500, "Execve error");
+		std::exit(1);
 	}
 	else
 	{
-		close(readpipe[1]);
 		close(writepipe[0]);
+		close(readpipe[1]);
 		this->_read_pipefd = readpipe[0];
 		this->_write_pipefd = writepipe[1];
 		this->_time_since_last_activity = time(NULL);
@@ -252,19 +185,19 @@ void	CGI::write_to_cgi(const std::string &str)
 	write(this->_write_pipefd, str.c_str(), str.length());
 }
 
-void	CGI::check_completed()
+void	CGI::update_state()
 {
 	int status;
 
 	status = waitpid(this->_pid, NULL, WNOHANG);
-	if (WIFEXITED(status))
+	if (WIFEXITED(status) != 0)
 	{
 		status = WEXITSTATUS(status);
 		if (status != 0)
 		{
 			throw std::runtime_error("Non-zero exit from forked process");	
 		}
-		this->_state = READING;
+		this->_state = PROCESSING_COMPLETED;
 	}
 }
 
@@ -279,6 +212,79 @@ void CGI::process_output()
 	}
 	this->_parse_headers();
 	this->_headers.insert(std::make_pair("Content-Length", to_string(this->get_body_string().length())));
+}
+
+void CGI::_validate_header_field(const std::pair<std::string, std::string> &header_pair)
+{
+	if (header_pair.first == "")
+	{
+		throw std::runtime_error("Missing header key");
+	}
+	if (header_pair.first == "Content-Length")
+	{
+		char *end;
+		long int content_length = std::strtol(header_pair.second.c_str(), &end, 10);
+
+		if (content_length < 0)
+			throw std::runtime_error("Invalid Content-Length value");
+		else if (content_length == 0 && std::strcmp(end, "\0") != 0)
+			throw std::runtime_error("Invalid conversion");
+	}
+}
+
+void CGI::_parse_headers()
+{
+	std::string														line;
+	std::size_t														separator_index;
+	std::size_t														whitespace_index;
+	std::pair<std::string, std::string>								header_field_pair;
+	std::pair<std::map<std::string, std::string>::iterator,bool>	insert_return;
+
+	while (getline_CRLF(this->_output_stream, line) && !line.empty())
+	{
+		separator_index = line.find(':');
+		whitespace_index = line.find_first_of(WHITESPACE_CHARACTERS);
+		if (whitespace_index < separator_index)
+		{
+			throw std::runtime_error("Whitespace found before : during header parsing");
+		}
+		header_field_pair = extract_key_value_pair(line, ':');
+		this->_validate_header_field(header_field_pair);
+		insert_return = this->_headers.insert(header_field_pair);
+    }
+	getline_CRLF(this->_output_stream, line);
+}
+
+std::auto_ptr<char *> CGI::_prepare_meta_variables()
+{
+	std::auto_ptr<char *>	env_arr(new char*[this->_envp.size() + 1]);
+	std::size_t				index = 0;
+
+	for (std::set<std::string>::iterator it = this->_envp.begin(); it != this->_envp.end(); it++)
+	{
+		env_arr.get()[index] = const_cast<char *>(it->c_str());
+		index++;
+	}
+	env_arr.get()[index] = NULL;
+
+	return env_arr;
+}
+
+std::auto_ptr<char *> CGI::_prepare_cgi_arg()
+{
+	std::auto_ptr<char *> args(new char*[1 + this->_args.size() + 1]);
+	std::size_t	index = 0;
+
+	args.get()[index] = const_cast<char *>(this->_binary.c_str());
+	index++;
+	for (std::vector<std::string>::iterator it = this->_args.begin(); it != this->_args.end(); it++)
+	{
+		args.get()[index] = const_cast<char *>(it->c_str());
+		index++;
+	}
+	args.get()[index] = NULL; 
+
+	return args;
 }
 
 }

@@ -28,6 +28,8 @@ class RequestMultipartFactory
 
 		std::map<std::string, std::string>	_extract_headers();
 		std::string							_extract_body();
+		void								_validate_headers(const std::map<std::string, std::string> &headers);
+		void								_validate_content_disposition(const std::string &content_disposition_line);
 
 };
 

@@ -51,7 +51,7 @@ class Client
 		void						set_server_config(ServerConfig *server_config);
 		void						set_client_state(ClientState const &state);
 
-		int							handle_request();
+		std::size_t					handle_request();
 		void 						handle_response();
 
 	private:

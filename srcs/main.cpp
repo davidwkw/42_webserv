@@ -23,6 +23,7 @@ int	main(int argc, char **argv)
 	}
 	catch(const std::runtime_error& run_error)
 	{
+		std::cerr << run_error.what() << std::endl;
 		logger.error(run_error.what());
 		return EXIT_FAILURE;
 	}

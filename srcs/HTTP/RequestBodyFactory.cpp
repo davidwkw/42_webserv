@@ -44,7 +44,6 @@ void RequestBodyFactory::reset()
 	this->_raw_content = "";
 }
 
-
 std::map<int, RequestMultipart> RequestBodyFactory::_extract_multipart_request_body(const std::string &boundary)
 {
 	std::string	extracted_string = "";
@@ -73,7 +72,7 @@ std::map<int, RequestMultipart> RequestBodyFactory::_extract_multipart_request_b
 		while (extracted_string.length() > 0)
 		{
 			extracted_string = extracted_string.substr(extracted_string.find_first_not_of(WHITESPACE_CHARACTERS) - 2); // accounting for transport padding, assuming last 2 characters are CRLF
-			result.insert(std::make_pair(result.size(), extracted_string));
+			result.insert(std::make_pair(result.size(), *RequestMultipartFactory(extracted_string).build_request_multipart())); // TODO: change to ptr storage
 			if (pos >= end_boundary_pos) // ignore epilogue
 			{
 				break; 

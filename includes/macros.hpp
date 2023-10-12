@@ -10,7 +10,7 @@
 #define CRLF "\r\n"
 #define BUFFER_SIZE 8192
 #define TIMEOUT 1000*5
-#define BACKLOG 10 // need to do some calculation of how many concurrent clients my server can support based on the number of virtual servers
+#define BACKLOG 10
 #define MAX_CLIENTS 10
 #define	DIRECTORY_TEMPLATE_IDENTIFIER "{DIRECTORY}"
 #define DIRECTORY_CONTENT_TEMPLATE_IDENTIFIER "{DIRECTORY_CONTENTS}"
