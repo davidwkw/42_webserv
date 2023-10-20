@@ -4,3 +4,7 @@ directives.txt
 test.hpp
 todo.txt
 webserver_log.txt
+*.o
+*.d
+webserv
+/objs

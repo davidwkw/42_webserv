@@ -227,14 +227,16 @@ void Response::unread_response(std::size_t unread_size)
 
 bool Response::has_been_completely_read() const
 {
-	bool bodystream_read_status;
+	bool bodystream_read_status = false;
 
 	if (this->_body_stream.get() == NULL)
 	{
+		std::cerr << "setting body stream read status" << std::endl;
 		bodystream_read_status = true;
 	}
 	else
 	{
+		std::cerr << "before segfault" << std::endl;
 		bodystream_read_status = !(*this->_body_stream);
 	}
 	return !(*this->_message_format) && bodystream_read_status;

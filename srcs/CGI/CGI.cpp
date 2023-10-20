@@ -136,6 +136,7 @@ void CGI::execute()
 	}
 	else if (this->_pid == 0) // child
 	{ 
+		std::cerr << "from child" << std::endl;
 		dup2(cgi_readpipe[0], STDIN_FILENO);
 		close(cgi_readpipe[0]);
 		dup2(cgi_writepipe[1], STDOUT_FILENO);
@@ -150,7 +151,7 @@ void CGI::execute()
 		char **arguments;
 		arguments =	args.get();
 		std::cerr << "cgi args: " << std::endl;
-		while (arguments)
+		while (*arguments != NULL)
 		{
 			std::cerr << std::string(*arguments) << std::endl;
 			arguments++;
@@ -160,6 +161,7 @@ void CGI::execute()
 	}
 	else
 	{
+		std::cerr << "from parent" << std::endl;
 		close(cgi_readpipe[0]);
 		close(cgi_writepipe[1]);
 		this->_read_pipefd = cgi_writepipe[0];
@@ -216,18 +218,24 @@ void CGI::process_output()
 {
 	std::size_t header_pos;
 
+	std::cerr << "output stream string: " << this->_output_stream.str() << std::endl;
 	header_pos = this->_output_stream.str().find("\n\n");
 	if (header_pos == std::string::npos)
 	{
+		std::cerr << "couldn't find header end" << std::endl;
 		this->_response_status = 500;
 		throw std::runtime_error("Couldn't find header end");	
 	}
+	std::cerr << "parsing headers" << std::endl;
 	this->_parse_headers();
+	std::cerr << "after parsing headers" << std::endl;
 	if (this->_headers.find("Location") != this->_headers.end()
 		&& this->_headers.find("Content-Type") != this->_headers.end()) // redirect with document
 	{
+		std::cerr << "found location and content-type" << std::endl;
 		if (this->_headers.find("Status") == this->_headers.end())
 		{
+			std::cerr << "couldn't find status" << std::endl;
 			this->_response_status = 500;
 			std::runtime_error("Missing status header");
 		}
@@ -237,16 +245,19 @@ void CGI::process_output()
 		status_string >> this->_response_status;
 		if (this->_response_status != 302)
 		{
+			std::cerr << "invalid status code" << std::endl;
 			this->_response_status = 500;
 			std::runtime_error("Invalid status code");
 		}
 	}
 	else if (this->_headers.find("Location") != this->_headers.end())
 	{
+		std::cerr << "found redirect" << std::endl;
 		this->_response_status = 302;
 	}
 	else if (this->_headers.find("Content-Type") != this->_headers.end())
 	{
+		std::cerr << "found Content-Type" << std::endl;
 		try
 		{
 			std::stringstream	status_string;
@@ -258,6 +269,7 @@ void CGI::process_output()
 	}
 	else 
 	{
+		std::cerr << "found nothing" << std::endl;
 		this->_response_status = 500;
 		throw std::runtime_error("Missing at least one header field");
 	}

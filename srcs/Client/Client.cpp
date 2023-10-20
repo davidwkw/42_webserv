@@ -313,10 +313,12 @@ void Client::handle_response()
 
 		if (this->_state == PROCESSING_CGI)
 		{			
+			std::cerr << "getting cgi state" << std::endl;
 			if (this->_cgi->get_state() == CGI::PROCESSING)
 			{
 				try
 				{
+					std::cerr << "updating state" << std::endl;
 					this->_cgi->update_state();
 				}
 				catch (std::exception const& e)
@@ -326,6 +328,7 @@ void Client::handle_response()
 			}
 
 			struct timeval  timeout = {};
+			std::cerr << "getting read and write fds" << std::endl;
 			int read_fd = this->_cgi->get_read_fd();
 			int	write_fd = this->_cgi->get_write_fd();
 			int max_fd = (read_fd > write_fd) ? read_fd : write_fd;
@@ -346,6 +349,7 @@ void Client::handle_response()
 				FD_SET(write_fd, &write_set);
 			}
 
+			std::cerr << "using select to check for cgi activity" << std::endl;
 			if ((activity = select(max_fd + 1, &read_set, &write_set, NULL, &timeout)) == -1 && errno != EINTR)
 			{
 				throw HTTPException(500, "CGI error");
@@ -356,8 +360,12 @@ void Client::handle_response()
 				std::auto_ptr<char> buffer(new char[CGI_READ_BUFFER_SIZE]);
 
 				std::memset(buffer.get(), 0, CGI_READ_BUFFER_SIZE);
-				if (this->_request.get_raw_body_stream().read(buffer.get(), CGI_READ_BUFFER_SIZE))
+				std::cerr << "before writing to cgi" << std::endl;
+				std::cerr << "request body address: " << &this->_request.get_body() << std::endl;
+				if (&this->_request.get_body() != NULL
+					&& this->_request.get_raw_body_stream().read(buffer.get(), CGI_READ_BUFFER_SIZE))
 				{
+					std::cerr << "writing to cgi" << std::endl;
 					this->_cgi->write_to_cgi(buffer.get());
 					this->_cgi->update_time_since_last_activity(time(NULL));
 				}
@@ -366,9 +374,12 @@ void Client::handle_response()
 					this->_cgi->close_write_fd();
 				}
 			}
+			std::cerr << "after writing to cgi" << std::endl;
 
+			std::cerr << std::boolalpha << FD_ISSET(read_fd, &read_set) << std::endl;
 			if (FD_ISSET(read_fd, &read_set))
 			{
+				std::cerr << "reading from cgi" << std::endl;
 				this->_cgi->read_cgi_stream(CGI_READ_BUFFER_SIZE);
 				this->_cgi->update_time_since_last_activity(time(NULL));
 			}
@@ -383,14 +394,17 @@ void Client::handle_response()
 			{
 				try
 				{
-					this->_cgi->process_output();
+					std::cerr << "before processing output..." << std::endl;
+ 					this->_cgi->process_output();
 				}
 				catch (const std::exception &e)
 				{
 					throw HTTPException(500, "Some kind of cgi error");
 				}
+				std::cerr << "appending headers.." << std::endl; 
 				this->_response.append_headers(this->_cgi->get_headers());
-				this->_response.set_body_stream(std::auto_ptr<std::istream>(new std::stringstream(this->_cgi->get_body_string())));
+				std::cerr << "setting body stream..." << std::endl;
+				this->_response.set_body_stream(static_cast<std::istream *>(new std::stringstream(this->_cgi->get_body_string())));
 				this->_response.set_status_code(this->_cgi->get_response_status());
 				this->_state = SENDING_RESPONSE;
 			}
@@ -443,11 +457,14 @@ void Client::handle_response()
 			this->_response.unread_response(this->_buffer_size - sent_length);
 		}
 	}
-	if (this->_response.has_been_completely_read())
+	std::cerr << "checking if completely read" << std::endl;
+	if (this->_state == SENDING_RESPONSE
+		&& this->_response.has_been_completely_read())
 	{
 		std::cerr << "completely read" << std::endl;
 		this->_state = FINISHED_PROCESSING;
 	}
+	std::cerr << "end of handle reponse block" << std::endl;
 }
 
 std::size_t Client::_get_body_size()
@@ -1102,7 +1119,7 @@ std::string Client::_translate_binary_path()
 	}
 	if (binary_path.substr(2).empty()) // path of the file is itself?
 	{
-		binary_path = this->_dir_path + this->_request.get_target_file();
+		binary_path = this->_dir_path + this->_dir_path + this->_request.get_target_file();
 	}
 	return binary_path;
 }
@@ -1149,7 +1166,7 @@ void Client::_initialize_cgi()
 	this->_cgi->set_binary(binary_path);
 	if (binary_path.substr(binary_path.find_last_of('/') + 1) != this->_request.get_target_file())
 	{
-		this->_cgi->add_arg(this->_request.get_target_file());
+		this->_cgi->add_arg(this->_dir_path + this->_request.get_target_file());
 	}
 	else
 	{
