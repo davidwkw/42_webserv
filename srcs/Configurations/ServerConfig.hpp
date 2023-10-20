@@ -30,6 +30,8 @@ class ServerConfig : public CommonServerConfig
 		std::set<std::string> 						server_names() const;
 		std::string 								client_body_temp_path() const;
 
+		std::map<std::string, std::string> 			directives() const;
+
 	private:
 		std::map<std::string, LocationConfig> 		_locations;
 

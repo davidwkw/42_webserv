@@ -1,4 +1,5 @@
 #include "Client.hpp"
+#include <unistd.h>
 
 extern char **environ;
 
@@ -81,7 +82,7 @@ const std::map<std::string, std::string> Client::_fill_mime_type_map()
 	return container;
 }
 
-Client::Client(int fd, std::size_t buffer_size) : _state(READING_REQUEST_HEADERS), _fd(fd), _buffer_stream(), _common_server_config(NULL), _server_config(NULL), _request(), _response(HTTP_PROTOCOL),_buffer_size(buffer_size), _endpoint(), _dir_path(), _cgi(NULL), _client_port(), _client_ip(), _server_port(), _server_ip()
+Client::Client(int fd, std::size_t buffer_size) : _state(READING_REQUEST_HEADERS), _fd(fd), _buffer_stream(), _common_server_config(NULL), _request(), _response(HTTP_PROTOCOL),_buffer_size(buffer_size), _endpoint(), _dir_path(), _cgi(NULL), _client_port(), _client_ip(), _server_port(), _server_ip()
 {
 	struct sockaddr_in	client_addr = {};
 	socklen_t			client_addr_len = sizeof(client_addr);
@@ -143,9 +144,9 @@ Client::ClientState Client::get_client_state() const
 	return this->_state;
 }
 
-ServerConfig const* Client::get_server_config() const
+CommonServerConfig const &Client::get_common_server_config() const
 {
-	return this->_server_config;
+	return *(this->_common_server_config.get());
 }
 
 std::string	Client::get_server_ip() const
@@ -170,7 +171,7 @@ int	Client::get_client_port() const
 
 void Client::set_server_config(ServerConfig *server_config)
 {
-	this->_server_config = server_config;
+	this->_common_server_config.reset(static_cast<CommonServerConfig *>(server_config));
 }
 
 void Client::set_client_state(const ClientState &state)
@@ -178,8 +179,9 @@ void Client::set_client_state(const ClientState &state)
 	this->_state = state;
 }
 
-std::size_t Client::handle_request()
+std::size_t Client::read_to_buffer()
 {
+	std::cerr << "reading to buffer" << std::endl;
 	std::auto_ptr<char>	buffer(new char[this->_buffer_size + 1]);
 	std::size_t			bytes_read;
 
@@ -189,42 +191,45 @@ std::size_t Client::handle_request()
 		return bytes_read;
 	}
 	this->_buffer_stream << std::string(buffer.get());
+	return bytes_read;
+}
+
+void Client::handle_request_headers()
+{
+	std::cerr << "handling request headers" << std::endl;
 	try
 	{
-		if (this->_state == READING_REQUEST_HEADERS)
+		if (!this->_has_full_message_format_received())
 		{
-			if (!this->_has_full_message_format_received())
-			{
-				return bytes_read;
-			}
-			this->_request.construct_message_format(this->_buffer_stream.str().substr(0, this->_buffer_stream.str().find(CRLF CRLF) + 2));
-			if (this->_request.get_method() == "POST" && this->_request.has_body_headers())
-			{
-				this->_check_request_body_headers();	
-				this->_buffer_stream.clear();
-				this->_buffer_stream.str(this->_buffer_stream.str().substr(this->_buffer_stream.str().find(CRLF CRLF) + 4));
-				this->_buffer_stream.seekg(0);
-				this->_buffer_stream.seekp(this->_buffer_stream.str().length());
-				this->_state = READING_REQUEST_BODY;
-			}
-			else
-			{
-				this->_buffer_stream.str("");
-				this->_state = VALIDATING_REQUEST;
-			}
+			return;
 		}
-		else if (this->_state == READING_REQUEST_BODY)
+		this->_request.construct_message_format(this->_buffer_stream.str().substr(0, this->_buffer_stream.str().find(CRLF CRLF) + 2));
+		this->_state = REQUEST_HEADERS_CONSTRUCTED;
+	}
+	catch(const HTTPException& e)
+	{
+		this->_response.set_status_code(e.get_status_code());
+		this->_state = PROCESSING_EXCEPTION;
+	}
+}
+
+void Client::check_request_body()
+{
+	std::cerr << "checking  request body" << std::endl;
+	try
+	{
+		if (this->_request.get_method() == "POST" && this->_request.has_body_headers())
 		{
-			if (!this->_request.get_header("Transfer-Encoding").empty())
-			{
-				this->_parse_chunked_request_body(this->_buffer_stream);
-			}
-				this->_check_body_size_within_limits(); // for chunked encoded, size checking will be inaccurate up to 9 + the length of the chunk-size line; would consider as a better than the alternative where a user can greatly exceed max size
-			if (!this->_has_received_complete_body())
-			{
-				return bytes_read;	
-			}
-			this->_create_request_body();
+			std::cerr << "request has body headers" << std::endl;
+			this->_check_request_body_headers();	
+			this->_buffer_stream.clear();
+			this->_buffer_stream.str(this->_buffer_stream.str().substr(this->_buffer_stream.str().find(CRLF CRLF) + 4));
+			this->_buffer_stream.seekg(0);
+			this->_buffer_stream.seekp(this->_buffer_stream.str().length());
+			this->_state = READING_REQUEST_BODY;
+		}
+		else
+		{
 			this->_buffer_stream.str("");
 			this->_state = VALIDATING_REQUEST;
 		}
@@ -232,14 +237,37 @@ std::size_t Client::handle_request()
 	catch(const HTTPException& e)
 	{
 		this->_response.set_status_code(e.get_status_code());
+		this->_buffer_stream.str("");
+		this->_state = PROCESSING_EXCEPTION;
 	}
+}
 
-	if (this->_response.get_status_code() > 0)
+void Client::handle_request_body()
+{
+	try
 	{
+		std::cerr << "reading request body" << std::endl;
+		if (!this->_request.get_header("Transfer-Encoding").empty())
+		{
+			std::cerr << "parsing chunked request body" << std::endl;
+			this->_parse_chunked_request_body(this->_buffer_stream);
+		}
+		this->_check_body_size_within_limits(); // for chunked encoded, size checking will be inaccurate up to 9 + the length of the chunk-size line; would consider as a better than the alternative where a user can greatly exceed max size
+		if (!this->_has_received_complete_body())
+		{
+			return;	
+		}
+		this->_create_request_body();
+		// std::cerr << "completed request body content =====\n" << this->_request.get_body().get_raw_string() << "\n========" << std::endl;
 		this->_buffer_stream.str("");
 		this->_state = VALIDATING_REQUEST;
 	}
-	return bytes_read;
+	catch(const HTTPException& e)
+	{
+		this->_response.set_status_code(e.get_status_code());
+		this->_buffer_stream.str("");
+		this->_state = PROCESSING_EXCEPTION;
+	}
 }
 
 void Client::handle_response()
@@ -248,20 +276,27 @@ void Client::handle_response()
 	{
 		if (this->_state == VALIDATING_REQUEST)
 		{
-			// this->_ident // identify server
+			std::cerr << "matching location" << std::endl;
 			this->_match_location();
+			std::cerr << "location matched is:" << this->_endpoint << std::endl;
+			std::cerr << "configuring common config" << std::endl;
 			this->_configure_common_config();
+			std::cerr << "method checking" << std::endl;
 			this->_is_method_allowed();
 			this->_dir_path = this->_common_server_config->root() + (this->_endpoint.empty() ? "/" : this->_endpoint);
+			std::cerr << "dir path: " << _dir_path << std::endl;
 			this->_state = PROCESSING_RESPONSE;
 		}
 
 		if (this->_state == PROCESSING_RESPONSE)
 		{
-			if (this->_request.get_target_file().length() > 0 && this->_is_target_cgi()) // if there was a file destination and that file is a cgi script
+			std::cerr << "target file: " << this->_request.get_target_file() << std::endl;
+			if (!this->_request.get_target_file().empty() && this->_is_target_cgi()) // if there was a file destination and that file is a cgi script
 			{
 				this->_initialize_cgi();
+				std::cerr << "before execute" << std::endl;
 				this->_cgi->execute();
+				std::cerr << "after execute" << std::endl;
 				this->_state = PROCESSING_CGI;
 			}
 			else if (this->_common_server_config->redirect().size() > 0)
@@ -318,9 +353,9 @@ void Client::handle_response()
 
 			if (FD_ISSET(write_fd, &write_set))
 			{
-				std::auto_ptr<char> buffer(new char[CGI_READ_BUFFER_SIZE + 1]);
+				std::auto_ptr<char> buffer(new char[CGI_READ_BUFFER_SIZE]);
 
-				std::memset(buffer.get(), 0, CGI_READ_BUFFER_SIZE + 1);
+				std::memset(buffer.get(), 0, CGI_READ_BUFFER_SIZE);
 				if (this->_request.get_raw_body_stream().read(buffer.get(), CGI_READ_BUFFER_SIZE))
 				{
 					this->_cgi->write_to_cgi(buffer.get());
@@ -356,26 +391,38 @@ void Client::handle_response()
 				}
 				this->_response.append_headers(this->_cgi->get_headers());
 				this->_response.set_body_stream(std::auto_ptr<std::istream>(new std::stringstream(this->_cgi->get_body_string())));
+				this->_response.set_status_code(this->_cgi->get_response_status());
 				this->_state = SENDING_RESPONSE;
 			}
 		}
 	}
 	catch (const HTTPException &e)
 	{
+		std::cerr << "caught exception" << std::endl;
 		this->_response.set_status_code(e.get_status_code());
 		this->_state = PROCESSING_EXCEPTION;
 	}
 	
 	if (this->_state == PROCESSING_EXCEPTION)
 	{
+		std::cerr << "handling exception" << std::endl;
 		this->_handle_exception();
 		this->_state = SENDING_RESPONSE;
 	}
 
 	if (this->_state == SENDING_RESPONSE && this->_response.get_message_format() == NULL)
 	{
-		this->_response.set_header("Connection", "Closed");
+		std::cerr << "constructing message format" << std::endl;
+		std::cerr << "before setting header" << std::endl;
+		this->_response.set_header("Connection", "close");
+		this->_response.set_header("Server", SERVER_NAME);
+		if (this->_response.get_body_stream() != NULL)
+		{
+			this->_response.set_header("Content-Length", to_string(calc_input_stream_size(*this->_response.get_body_stream())));
+		}
+		std::cerr << "after setting header" << std::endl;
 		this->_response.construct_response_message_format();
+		std::cerr << "after constructing message format" << std::endl;
 	}
 
 	if (this->_state == SENDING_RESPONSE)
@@ -383,18 +430,22 @@ void Client::handle_response()
 		int sent_length;
 
 		std::string read_response_str = this->_response.read_response(this->_buffer_size);
+		std::cerr << "response block sent: =======\n" << read_response_str << "============" << std::endl;
 		sent_length = send(this->_fd, read_response_str.c_str(), this->_buffer_size, MSG_NOSIGNAL);
+		std::cerr << "bytes sent: " << sent_length << std::endl;
 		if (sent_length == -1)
 		{
 			this->_state = FINISHED_PROCESSING;
 		}
-		else if (sent_length < static_cast<int>(this->_buffer_size))
+		else if (sent_length < static_cast<int>(this->_buffer_size)) // todo: somethng wrong here
 		{
+			std::cerr << "unreading response" << std::endl;
 			this->_response.unread_response(this->_buffer_size - sent_length);
 		}
 	}
 	if (this->_response.has_been_completely_read())
 	{
+		std::cerr << "completely read" << std::endl;
 		this->_state = FINISHED_PROCESSING;
 	}
 }
@@ -452,20 +503,21 @@ std::string Client::_identify_boundary_string()
 	std::string							boundary_line;
 
 	result = this->_request.get_header("Content-Type");
-	if (result.empty())
-	{
-		return result;
-	}
-	if (trim_chars(result.substr(0, result.find(';')), WHITESPACE_CHARACTERS) != "multipart/form-data")
+	if (result.empty()
+		|| this->_identify_content_type() != "multipart/form-data")
 	{
 		return result;
 	}
 	boundary_line = trim_chars(result.substr(result.find(';') + 1), WHITESPACE_CHARACTERS);
-	kv_pair = extract_key_value_pair(result, '=');
+	std::cerr << "boundary_line: " << boundary_line << std::endl;
+	kv_pair = extract_key_value_pair(boundary_line, '=');
+	std::cerr << "first key: " << trim_chars(kv_pair.first, WHITESPACE_CHARACTERS) << std::endl;
 	if (trim_chars(kv_pair.first, WHITESPACE_CHARACTERS) != "boundary")
 	{
+		std::cerr << "first item not boundary" << std::endl;
 		return result;
 	}
+	std::cerr << "boundary: " << trim_chars(kv_pair.second, "\"") << std::endl;
 	return trim_chars(kv_pair.second, "\"");
 }
 
@@ -475,7 +527,10 @@ void Client::_check_content_length_header_within_limits()
 	unsigned long	content_length_value_from_header;
 
 	content_length_header_value = this->_request.get_header("Content-Length");
-	content_length_value_from_header = std::strtoul(content_length_header_value.c_str(), NULL, 10);;
+	std::cerr << "content length value : " << content_length_header_value << std::endl;
+	content_length_value_from_header = std::strtoul(content_length_header_value.c_str(), NULL, 10);
+	std::cerr << "content length value int: " << content_length_value_from_header << std::endl;
+	std::cerr << "config address: " << this->_common_server_config.get() << std::endl;
 	if (content_length_value_from_header > this->_common_server_config->client_max_body_size())
 	{
 		throw HTTPException(413, "Request entity too large");
@@ -484,6 +539,7 @@ void Client::_check_content_length_header_within_limits()
 
 void Client::_create_request_body()
 {
+	std::cerr << "within create request body call" << std::endl;
 	std::string	content_type;
 	std::string parsed_body_string;
 
@@ -499,7 +555,8 @@ void Client::_create_request_body()
 		this->_buffer_stream.str(this->_buffer_stream.str().substr(0, content_length_value));
 	}
 
-	content_type = this->_request.get_header("Content-Type");
+	content_type = this->_identify_content_type();
+	std::cerr << content_type << std::endl;
 	if (content_type == "multipart/form-data")
 	{
 		std::string boundary_string;
@@ -511,7 +568,6 @@ void Client::_create_request_body()
 	{
 		this->_request.set_body(RequestBodyFactory(this->_buffer_stream.str()).build_form_encoded());
 	}
-	return;
 }
 
 void Client::_parse_chunked_request_body(std::stringstream &stream)
@@ -579,23 +635,26 @@ std::string Client::_identify_content_type()
 		return content_type_string;
 	}
 	content_type_string = content_type_string.substr(0, content_type_string.find(';'));
-	return content_type_string;
+	return trim_chars(content_type_string, WHITESPACE_CHARACTERS);
 }
 
 void Client::_check_request_body_headers()
 {
 	if (!this->_request.get_header("Content-Length").empty())
 	{
+		std::cerr << "checking if content is within limits" << std::endl;
 		this->_check_content_length_header_within_limits();
 	}
 
 	{
 		std::string content_type;
 
+		std::cerr << "identifying content_type" << std::endl;
 		content_type = this->_identify_content_type();
-		if (!content_type.empty() 
-			&& (content_type != "multipart/form-data"
-				|| content_type != "application/x-www-form-urlencoded"))
+		std::cerr << "content_type: " <<  content_type << std::endl;
+		if (content_type.empty() 
+			|| (content_type != "multipart/form-data"
+				&& content_type != "application/x-www-form-urlencoded"))
 		{
 			throw HTTPException(400, "Unsupported content-type");
 		}
@@ -621,11 +680,19 @@ void Client::_check_request_body_headers()
 void Client::_handle_method()
 {
 	if (this->_request.get_method() == "GET")
+	{
+		std::cerr << "should trigger on get request" << std::endl;
 		this->_handle_get(this->_dir_path + this->_request.get_target_file());
+	}
 	else if (this->_request.get_method() == "POST")
+	{
+		std::cerr << "should trigger on post request" << std::endl;
 		this->_handle_post(this->_dir_path);
+	}
 	else if (this->_request.get_method() == "DELETE")
+	{
 		this->_handle_delete(this->_dir_path + this->_request.get_target_file());
+	}
 }
 
 void Client::_match_location()
@@ -636,19 +703,33 @@ void Client::_match_location()
 	std::size_t	extension_pos;
 	std::size_t slash_index;
 
+	std::cerr << "getting target_str" << std::endl;
 	target_str = url_decode(this->_request.get_target());
+	target_str = target_str.substr(0, target_str.find_first_of('?'));
+	std::cerr << "target str: " << target_str << std::endl;
 	number_of_extensions = std::count(target_str.begin(), target_str.end(), '.');
+	std::cerr << "counting number of periods" << std::endl;
 	if (number_of_extensions > 1)
 	{
-		throw HTTPException(404, "Not a valid path");
+		std::cerr << "triggered extension number exception" << std::endl;
+		throw HTTPException(404, "Invalid path");
 	}
+	std::cerr << "number of extensions... " << number_of_extensions << std::endl;
+	std::cerr << "before searching extension pos" << std::endl;
 	extension_pos = target_str.find_first_of('.');
+	std::cerr << "after searching extension pos" << std::endl;
 	slash_index = target_str.find_last_of('/', extension_pos);
+	std::cerr << "searching slash index" << std::endl;
 	endpoint_str = target_str;
 	while (slash_index != std::string::npos)
 	{
 		endpoint_str = endpoint_str.substr(0, slash_index + 1);
-		if (this->_server_config->locations().find(endpoint_str) != this->_server_config->locations().end())
+		std::map<std::string, LocationConfig> locations;
+		ServerConfig *server_config;
+
+		server_config = dynamic_cast<ServerConfig *>(this->_common_server_config.get());
+		locations = server_config->locations();
+		if (locations.find(endpoint_str) != locations.end())
 		{
 			this->_endpoint = endpoint_str;
 			return;
@@ -664,13 +745,21 @@ void Client::_match_location()
 
 void Client::_is_method_allowed()
 {
-	if (this->_common_server_config->limit_except().find(this->_request.get_method()) == this->_common_server_config->limit_except().end())
+	std::set<std::string> limit_except;
+
+	std::cerr << "retrieving limit except..." <<std::endl;
+	limit_except = this->_common_server_config->limit_except();
+	std::cerr << "before checking for method" << std::endl;
+	std::cerr << "method is: " << this->_request.get_method() << std::endl;
+	if (limit_except.find(this->_request.get_method()) == limit_except.end())
 	{
+		std::cerr << "method not allowed" << std::endl;
 		throw HTTPException(405, "Method not allowed");
 	}
+	std::cerr << "after method check" << std::endl;
 }
 
-std::string Client::_generate_dir_content_list_html(std::string dir_path)
+std::string Client::_generate_dir_content_list_html(const std::string &dir_path)
 {
 	std::ostringstream	oss;
     struct dirent		*entry;
@@ -679,49 +768,60 @@ std::string Client::_generate_dir_content_list_html(std::string dir_path)
     folder = opendir(dir_path.c_str());
     if (folder == NULL)
 	{
-        throw std::runtime_error("Couldn't open dir " + dir_path);
+        throw HTTPException(500, "Couldn't open dir " + dir_path);
 	}
+	std::string root_str;
+	std::string	end_path;
+	
+	root_str = this->_common_server_config->root();
+	end_path = dir_path;
+	end_path = end_path.erase(end_path.find(root_str), root_str.length());
 	while ((entry = readdir(folder)) != NULL)
 	{
-		std::string	link;
-		std::string root_str = this->_common_server_config->root();
-		
-		link = this->_request.get_header("Host") + (dir_path.erase(dir_path.find(root_str), root_str.length())) + entry->d_name;
 		if (entry->d_type == DT_REG)
-			oss << "<a href=\"" << link.c_str() << "\">" << entry->d_name << "</a>\n"; 
+		{
+			std::string	link;
+
+			link = this->_request.get_header("Host") + end_path + std::string(entry->d_name);
+			oss << "<li>";
+			oss << "<a href=\"http://" << link.c_str() << "\">" << entry->d_name << "</a>\n";
+			oss << "</li>";
+		}
 	}
 	closedir(folder);
 	return oss.str();
 }
 
-void Client::_handle_auto_index(const std::string &dir, std::stringstream &stream)
+void Client::_handle_autoindex(const std::string &dir, std::stringstream &stream)
 {
 	std::ostringstream	temp_autoindex_path;
 	std::ifstream		auto_index_template;
 	std::string			line;
+	std::string			content_path;
+	std::string			root;
 
+	root = this->_common_server_config->root();
+	content_path = dir;
+	content_path.erase(content_path.find(root), root.length());
 	auto_index_template.open(AUTOINDEX_TEMPLATE_PATH);
 	if (!auto_index_template.is_open())
 	{
-		HTTPException(500, "Critical mess up. Couldn't open autoindex.html");
+		throw HTTPException(500, "Critical mess up. Couldn't open autoindex.html");
 	}
 	while (std::getline(auto_index_template, line))
 	{
-		std::size_t identifier_pos;
+		std::size_t identifier_pos = std::string::npos;
 
-		if ((identifier_pos = line.find(DIRECTORY_TEMPLATE_IDENTIFIER)) != std::string::npos)
+		while ((identifier_pos = line.find(DIRECTORY_TEMPLATE_IDENTIFIER)) != std::string::npos)
 		{
-			stream << line.substr(0, identifier_pos);
-			stream << dir;
-			stream << line.substr(dir.length());
+			line.replace(identifier_pos, std::string(DIRECTORY_TEMPLATE_IDENTIFIER).length(), content_path);
 		}
-		else if ((identifier_pos = line.find(DIRECTORY_CONTENT_TEMPLATE_IDENTIFIER)) != std::string::npos)
+		while ((identifier_pos = line.find(DIRECTORY_CONTENT_TEMPLATE_IDENTIFIER)) != std::string::npos)
 		{
-			stream << this->_generate_dir_content_list_html(dir);
+			line.replace(identifier_pos, std::string(DIRECTORY_CONTENT_TEMPLATE_IDENTIFIER).length(), this->_generate_dir_content_list_html(dir));
 		}
-		stream << line << "\n";
+		stream << line << std::string(CRLF);
 	}
-	auto_index_template.close();
 }
 
 void Client::_handle_get(const std::string &file_path)
@@ -731,38 +831,47 @@ void Client::_handle_get(const std::string &file_path)
 
 	if (!this->_request.get_target_file().empty()) // destination with no file, this is checked instead of file_path because file_path already has root and etc appended
 	{
+		std::cerr << "target file condition fulfilled" << std::endl;
 		std::ifstream *temp_stream = new std::ifstream;
 
 		temp_stream->open(file_path.c_str());
 		if (!temp_stream->is_open())
+		{
 			throw HTTPException(404, "File not found");
+		}
 		file_extension = extract_file_extension(this->_request.get_target_file());
 		if ((mime_type_iterator = Client::mime_type_map.find(file_extension)) != Client::mime_type_map.end())
 		{
 			this->_response.set_header("Content-Type", mime_type_iterator->second);
 		}
-		this->_response.set_header("Content-Length", to_string(calc_input_stream_size(*temp_stream)));
 		this->_response.set_body_stream(temp_stream);
 	}
-	else if (this->_server_config->autoindex() == "on")
+	else if (this->_common_server_config->autoindex() == "on")
 	{
 		std::stringstream *temp_stream = new std::stringstream;
 
-		this->_handle_auto_index(file_path, *temp_stream);
+		this->_handle_autoindex(file_path, *temp_stream);
+		std::cerr << "temp stream after caching" <<  temp_stream->str() << std::endl;
 		this->_response.set_header("Content-Type", "text/html"); // had to hardcode..
-		this->_response.set_header("Content-Length", to_string(calc_input_stream_size(*temp_stream)));
 		this->_response.set_body_stream(temp_stream);
 	}
 	else
 	{
+		std::cerr << "target file unsatisfied, looking for index" << std::endl;
 		const std::vector<std::string> indexs = this->_common_server_config->index();
 		std::ifstream *temp_stream = new std::ifstream;
 
 		for (std::vector<std::string>::const_iterator cit = indexs.begin(); cit != indexs.end(); cit++)
 		{
-			temp_stream->open((file_path + *cit).c_str());
+			std::string const &index_file_name = *cit;
+
+			std::cerr << "file path: " << file_path << std::endl;
+			std::cerr << "index_file_name: " << index_file_name << std::endl;
+			std::cerr << (file_path + index_file_name) << std::endl;
+			temp_stream->open((file_path + index_file_name).c_str());
 			if (temp_stream->is_open())
 			{
+				std::cerr << "found an index file" << std::endl;
 				file_extension = extract_file_extension(file_path + *cit);
 				if ((mime_type_iterator = Client::mime_type_map.find(file_extension)) != Client::mime_type_map.end())
 				{
@@ -773,10 +882,10 @@ void Client::_handle_get(const std::string &file_path)
 		}
 		if (!temp_stream->is_open())
 		{
+			std::cerr << "failed to open any stream" << std::endl;
 			delete temp_stream;
 			throw HTTPException(404, "File not found");
 		}
-		this->_response.set_header("Content-Length", to_string(calc_input_stream_size(*temp_stream)));
 		this->_response.set_body_stream(temp_stream);
 	}
 	this->_response.set_status_code(200);
@@ -786,9 +895,18 @@ void Client::_handle_post(const std::string &dir_path)
 {
 	RequestBody &request_body = this->_request.get_body();
 
+	std::cerr << dir_path << std::endl; 
+	std::cerr << "before running multipart block" << std::endl;
+
+	std::cerr << "request body address: " << &request_body << std::endl;
+	std::cerr << "request body type: " << request_body.get_type() << std::endl;
 	if (request_body.get_type() == "multipart/form-data")
 	{
-		for (std::map<int, RequestMultipart>::iterator it = request_body.get_index_multipart().begin(); it != request_body.get_index_multipart().end(); it++)
+		std::map<int, RequestMultipart>	index_multipart;
+
+		std::cerr << "looping through multiparts... " << std::endl;
+		index_multipart = request_body.get_index_multipart();
+		for (std::map<int, RequestMultipart>::iterator it = index_multipart.begin(); it != index_multipart.end(); it++)
 		{
 			RequestMultipart	&file_part = it->second; // for readability;
 			std::string			filename;
@@ -805,24 +923,40 @@ void Client::_handle_post(const std::string &dir_path)
 			{
 				filename = filename.substr(forward_slash_pos + 1);
 			}
+			std::cerr << "extracting file extension.." << std::endl;
 			if (extract_file_extension(filename).length() == 0)
 			{
 				throw HTTPException(400, "Missing file extension");
 			}
+			std::cerr << "checking if name is compatible with filesystem" << std::endl;
 			if (!is_system_compatible_filename(filename))
 			{
 				throw HTTPException(400, "Filename incompatible with system");
 			}
+			
+			std::cerr << "incoming filename is: " << filename << std::endl;
 
 			std::ofstream	outfile;
 			std::string		full_path;
 			
 			full_path = dir_path + filename;
+			std::cerr << "making file.." << std::endl;
+			{
+				std::ifstream filecheck;
+
+				filecheck.open(full_path.c_str());
+				if (filecheck.is_open())
+				{
+					std::cerr << "file exists" << std::endl;
+					throw HTTPException(400, "File already exists");
+				}
+			}
 			outfile.open(full_path.c_str());
 			if (!outfile.is_open())
 			{
-				throw HTTPException(400, "File already exists");
+				throw HTTPException(500, "Error creating file");
 			}
+			std::cerr << "getting content.." << std::endl;
 			outfile << file_part.get_content();
 			outfile.close();
 		}
@@ -851,37 +985,50 @@ void Client::_handle_exception()
 	std::string								status_code;
 	std::ifstream							*temp_stream = new std::ifstream;
 
-	status_code =  to_string(this->_response.get_status_code());
+	std::cerr << "converting status code to string" << std::endl;
+	status_code = to_string(this->_response.get_status_code());
+	std::cerr << "getting error page vector" << std::endl;
 	error_pages = this->_common_server_config->error_page();
+	std::cerr << "before loop to find page" << std::endl;
 	for (std::vector<std::vector<std::string> >::const_iterator cit = error_pages.begin(); cit != error_pages.end(); cit++)
 	{
+		std::cerr << "looping through error pages" << std::endl;
 		for (std::size_t index = 0; index < (cit->size() - 1); index++)
 		{
-			if (cit->at(index) == status_code)
+			try
 			{
+				cit->at(index) == status_code;
 				file_name = cit->at(cit->size());
 				break;
+			}
+			catch(const std::out_of_range& e)
+			{
+				continue;;
 			}
 		}
 	}
 	if (file_name.empty())
 	{
-		file_name = std::string(DEFAULT_ERROR_PAGE_DIR) + "500.html"; // default for 500.html for everything.
+		std::cerr << "couldn't find suitable error page using default" << std::endl;
+		file_name = "500.html"; // default for 500.html for everything.
 	}
 	temp_stream->open((std::string(DEFAULT_ERROR_PAGE_DIR) + file_name).c_str());
 	if (!temp_stream->is_open())
 	{
-		std::runtime_error("Couldn't open exception file"); // this kills the server 
+		std::cerr << "couldn't open error page" << std::endl;
+		throw std::runtime_error("Couldn't open exception file"); // this kills the server 
 	}
 
 	std::string file_extension;
 	std::map<std::string, std::string>::const_iterator mime_type_iterator;
 
 	file_extension = extract_file_extension(file_name);
-	if ((mime_type_iterator = Client::mime_type_map.find(file_extension)) != Client::mime_type_map.end())
+	mime_type_iterator = Client::mime_type_map.find(file_extension);
+	if (mime_type_iterator != Client::mime_type_map.end())
 	{
 		this->_response.set_header("Content-Type", mime_type_iterator->second);
 	}
+	std::cerr << "setting body_stream " << std::endl;
 	this->_response.set_body_stream(temp_stream);
 }
 
@@ -905,12 +1052,16 @@ void Client::_handle_redirect()
 
 void Client::_configure_common_config()
 {
-	this->_common_server_config = static_cast<CommonServerConfig *>(this->_server_config);
 	if (!this->_endpoint.empty())
 	{
 		try
 		{
-			this->_common_server_config = static_cast<CommonServerConfig *>(const_cast<LocationConfig *>(&this->_server_config->locations().at(this->_endpoint)));
+			std::map<std::string, LocationConfig>	locations;
+			ServerConfig							*server_config;
+
+			server_config = dynamic_cast<ServerConfig *>(this->_common_server_config.get());
+			locations = server_config->locations();
+			this->_common_server_config.reset(static_cast<CommonServerConfig *>(new LocationConfig(locations.at(this->_endpoint))));
 		}
 		catch (const std::out_of_range &e)
 		{
@@ -936,7 +1087,7 @@ std::string Client::_translate_binary_path()
 	file_extension = extract_file_extension(this->_request.get_target_file());
 	binary_path = this->_extract_binary_path_from_config(file_extension);
 
-	if (binary_path.length() == 0) // failed to match
+	if (binary_path.empty()) // failed to match
 	{
 		throw HTTPException(404, "Couldn't find binary path"); // technically shouldn't be able to trigger
 	}
@@ -949,7 +1100,7 @@ std::string Client::_translate_binary_path()
 	{
 		throw HTTPException(404, "Script not found");
 	}
-	if (binary_path.substr(2).length() == 0) // path of the file is itself?
+	if (binary_path.substr(2).empty()) // path of the file is itself?
 	{
 		binary_path = this->_dir_path + this->_request.get_target_file();
 	}
@@ -958,8 +1109,14 @@ std::string Client::_translate_binary_path()
 
 std::string Client::_extract_binary_path_from_config(const std::string &file_extension)
 {
-	for (std::vector<std::vector<std::string> >::const_iterator it = this->_common_server_config->cgi().begin(); it != this->_common_server_config->cgi().end(); it++)
+	std::cerr << "within extract binary path" << std::endl;
+	std::vector<std::vector<std::string> > cgis;
+
+	cgis = this->_common_server_config->cgi();
+	std::cerr << "cgis size is: " << cgis.size() << std::endl; 
+	for (std::vector<std::vector<std::string> >::const_iterator it = cgis.begin(); it != cgis.end(); it++)
 	{
+		std::cerr << "cgi extension: " << (*it)[0] << std::endl;
 		if (file_extension == (*it)[0])
 		{
 			return (*it)[1];
@@ -974,9 +1131,11 @@ bool Client::_is_target_cgi()
 	std::string	binary_path;
 
 	file_extension = extract_file_extension(this->_request.get_target_file());
+	std::cerr << "incoming file extension: " << file_extension << std::endl;
 	binary_path = _extract_binary_path_from_config(file_extension);
+	std::cerr << "binary path retrieved is: " << binary_path << std::endl;
 
-	return (binary_path.length() > 0);
+	return (!binary_path.empty());
 }
 
 void Client::_initialize_cgi()
@@ -985,12 +1144,12 @@ void Client::_initialize_cgi()
 	std::vector<std::string>	args;
 
 	binary_path = this->_translate_binary_path();
-	
+	std::cerr << "translated binary path: " << binary_path << std::endl;
 	this->_cgi.reset(new CGI());
 	this->_cgi->set_binary(binary_path);
-	if (binary_path.find("./") == std::string::npos)
+	if (binary_path.substr(binary_path.find_last_of('/') + 1) != this->_request.get_target_file())
 	{
-		this->_cgi->add_arg(this->_dir_path + this->_request.get_target_file());
+		this->_cgi->add_arg(this->_request.get_target_file());
 	}
 	else
 	{
@@ -1012,12 +1171,15 @@ void Client::_initialize_cgi()
 	this->_cgi->add_envp("REMOTE_HOST", this->_request.get_header("Host"));
 	this->_cgi->add_envp("REQUEST_METHOD", this->_request.get_method());
 	this->_cgi->add_envp("SCRIPT_NAME", this->_request.get_target_file());
-	this->_cgi->add_envp("SERVER_NAME", this->_server_ip);
+	this->_cgi->add_envp("SERVER_NAME", this->_request.get_header("Host"));
 	this->_cgi->add_envp("SERVER_PORT", to_string(this->_server_port));
-	this->_cgi->add_envp("SERVER_PROTOCOL", "HTTP/" + to_string(HTTP_PROTOCOL));
+	this->_cgi->add_envp("SERVER_PROTOCOL", "http");
 	this->_cgi->add_envp("SERVER_SOFTWARE", SERVER_NAME + to_string(SOFTWARE_VERSION));
 
-	for (std::map<std::string, std::string>::iterator it = this->_request.get_headers().begin(); it != this->_request.get_headers().end(); it++)
+	std::map<std::string, std::string> headers;
+
+	headers = this->_request.get_headers();
+	for (std::map<std::string, std::string>::iterator it = headers.begin(); it != headers.end(); it++)
 	{
 		if (it->first == "Content-Length" || it->first == "Content-Type")
 		{

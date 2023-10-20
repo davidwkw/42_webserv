@@ -62,7 +62,7 @@ std::map<int, RequestMultipart> RequestBodyFactory::_extract_multipart_request_b
 	end_boundary_pos = temp.rfind(std::string(CRLF) + boundary + "--");
 	if (end_boundary_pos == std::string::npos)
 	{
-		throw std::runtime_error("Missing end boundary");
+		throw HTTPException(400 ,"Missing end boundary");
 	}
 	
 	try

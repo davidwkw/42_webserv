@@ -150,4 +150,9 @@ std::vector<unsigned int> ServerConfig::ports() const
 	return ret_vector;
 }
 
+std::map<std::string, std::string> ServerConfig::directives() const
+{
+	return this->_directives;
+}
+
 }

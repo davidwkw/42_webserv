@@ -20,11 +20,11 @@ if fileitem.filename:
 else:
    message = 'No file was uploaded'
    
-print """\
-Content-Type: text/html\n
+print(f"""
+Content-Type: text/html\n\n
 <html>
 <body>
    <p>%s</p>
 </body>
 </html>
-""" % (message,)
+""" % (message,))

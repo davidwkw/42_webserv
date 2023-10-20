@@ -59,6 +59,7 @@ std::string RequestLine::get_target_file() const
 	std::string	target_file_name;
 
 	decoded_target = url_decode(this->_target);
+	decoded_target = decoded_target.substr(0, decoded_target.find_first_of('?'));
 	count = std::count(decoded_target.begin(), decoded_target.end(), '.');
 	if (count == 0)
 	{
@@ -99,7 +100,10 @@ std::map<std::string, std::string> RequestLine::get_query_map() const
 
 std::string RequestLine::get_query_string() const
 {
-	return this->_target.substr(this->_target.find_last_of('?') + 1);
+	std::string	decoded_target;
+
+	decoded_target = url_decode(this->_target);
+	return decoded_target.substr(decoded_target.find_last_of('?') + 1);
 }
 
 float RequestLine::get_protocol_version() const
@@ -135,8 +139,9 @@ void RequestLine::reset()
 
 void RequestLine::_construct()
 {
-	std::vector<std::string> request_line_tokens;
+	std::vector<std::string>	request_line_tokens;
 
+	request_line_tokens = tokenise_str(this->_start_line);
 	if (request_line_tokens.size() != 3)
 	{
 		throw std::runtime_error("Invalid request start line");

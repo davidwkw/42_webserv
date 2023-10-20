@@ -34,8 +34,8 @@ void WebServer::run()
 {   
     struct timeval  timeout = {};
     int             activity;
-    int             server_max_fd;
-    int             max_fd;
+    int             server_max_fd = 0;
+    int             max_fd = 0;
 
     this->_initialise_socket_fd();
     this->_append_listen_sockets_to_allfd(server_max_fd);
@@ -48,6 +48,8 @@ void WebServer::run()
         this->_reinitialize_fd_sets();
         this->_append_read_sockets_to_readfd(max_fd);
         this->_append_write_sockets_to_writefd(max_fd);
+        std::cerr << "server max fd: " << server_max_fd << std::endl;
+        std::cerr << "max fd: " << max_fd << std::endl; 
         activity = select(max_fd + 1, &this->_read_fds , &this->_write_fds , NULL , &timeout);
         if ((activity < 0) && (errno != EINTR))  
         {  
@@ -85,7 +87,20 @@ void WebServer::_initialise_socket_fd()
             catch (const std::out_of_range &e){}
         }
         // construct HTTPServer based on port number and pass all server configs to the server
-        this->_port_http_server_map.insert(std::make_pair(current_port, new HTTPServer(current_port, BACKLOG, MAX_CLIENTS, BUFFER_SIZE, server_configs)));
+        try
+        {
+            this->_port_http_server_map.at(current_port);
+        }
+        catch(const std::out_of_range& e)
+        {
+            this->_port_http_server_map.insert(std::make_pair(current_port, new HTTPServer(current_port, BACKLOG, MAX_CLIENTS, BUFFER_SIZE, server_configs)));
+        }
+        
+    }
+
+    for(std::map<unsigned int, HTTPServer *>::iterator it = _port_http_server_map.begin(); it != _port_http_server_map.end(); it++)
+    {
+        std::cerr << "HTTPServer with port: " << it->first << std::endl;
     }
 }
 
@@ -115,9 +130,11 @@ void WebServer::_append_read_sockets_to_readfd(int &max_fd)
 {
     for (std::map<unsigned int, HTTPServer *>::iterator it = this->_port_http_server_map.begin(); it != this->_port_http_server_map.end(); it++)
     {
-        HTTPServer &current_server = *(it->second);
+        HTTPServer		&current_server = *(it->second);
+        std::list<int>	client_read_fd_list;
 
-        for (std::list<int>::iterator it2 = current_server.get_client_read_fds().begin(); it2 != current_server.get_client_read_fds().end(); it2++)
+		client_read_fd_list = current_server.get_client_read_fds();
+        for (std::list<int>::iterator it2 = client_read_fd_list.begin(); it2 != client_read_fd_list.end(); it2++)
         {
             int &current_fd = *it2;
 
@@ -134,9 +151,11 @@ void WebServer::_append_write_sockets_to_writefd(int &max_fd)
 {
     for (std::map<unsigned int, HTTPServer *>::iterator it = this->_port_http_server_map.begin(); it != this->_port_http_server_map.end(); it++)
     {
-        HTTPServer &current_server = *(it->second);
+        HTTPServer		&current_server = *(it->second);
+		std::list<int>	client_write_fd_list;
 
-        for (std::list<int>::iterator it2 = current_server.get_client_write_fds().begin(); it2 != current_server.get_client_write_fds().end(); it2++)
+		client_write_fd_list = current_server.get_client_write_fds();
+        for (std::list<int>::iterator it2 = client_write_fd_list.begin(); it2 != client_write_fd_list.end(); it2++)
         {
             int &current_fd = *it2;
 
@@ -158,7 +177,9 @@ void WebServer::_accept_incoming_connections()
         
         if (FD_ISSET(current_server.get_listen_socket_fd(), &this->_read_fds))
         {
+            std::cerr << "Client attempting connection..." << std::endl;
             current_server.accept_connection();
+            std::cerr << "Client successfully connected" << std::endl;
         }
     }
 }
@@ -168,9 +189,10 @@ void WebServer::_perform_socket_io()
     // Go through each port/httpserver
     for (std::map<unsigned int, HTTPServer *>::iterator it = this->_port_http_server_map.begin(); it != this->_port_http_server_map.end(); it++)
     {
-        HTTPServer &current_server = *(it->second);
+        HTTPServer		&current_server = *(it->second);
+        std::list<int>	current_server_read_fd_list = current_server.get_client_read_fds();
         // Go through each httpserver's read fds;
-        for (std::list<int>::iterator it2 = current_server.get_client_read_fds().begin(); it2 != current_server.get_client_read_fds().end(); it2++)
+        for (std::list<int>::iterator it2 = current_server_read_fd_list.begin(); it2 != current_server_read_fd_list.end(); it2++)
         {
             int &current_fd = *it2;
 
@@ -180,8 +202,9 @@ void WebServer::_perform_socket_io()
             }
         }
 
+		std::list<int>	current_server_write_fd_list = current_server.get_client_write_fds();
         // Go through each httpserver's write fds;
-        for (std::list<int>::iterator it2 = current_server.get_client_write_fds().begin(); it2 != current_server.get_client_write_fds().end(); it2++)
+        for (std::list<int>::iterator it2 = current_server_write_fd_list.begin(); it2 != current_server_write_fd_list.end(); it2++)
         {
             int &current_fd = *it2;
 

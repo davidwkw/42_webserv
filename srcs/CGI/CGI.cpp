@@ -3,7 +3,9 @@
 namespace ft
 {
 
-CGI::CGI() : _state(PROCESSING), _binary(), _args(), _envp(), _read_pipefd(STDIN_FILENO), _write_pipefd(STDOUT_FILENO), _pid(-1), _time_since_last_activity(time(NULL)), _output_stream(), _headers(){}
+CGI::CGI() : _state(PROCESSING), _binary(), _args(), _envp(), _read_pipefd(STDIN_FILENO), _write_pipefd(STDOUT_FILENO), _pid(-1), _time_since_last_activity(time(NULL)), _output_stream(), _headers(), _response_status(200){}
+
+CGI::CGI(const std::string &binary) : _state(PROCESSING), _binary(binary), _args(), _envp(), _read_pipefd(STDIN_FILENO), _write_pipefd(STDOUT_FILENO), _pid(-1), _time_since_last_activity(time(NULL)), _output_stream(), _headers(), _response_status(200){}
 
 CGI::~CGI()
 {
@@ -42,10 +44,10 @@ std::string CGI::get_body_string() const
 	std::size_t header_pos;
 	std::string	body_string;
 
-	header_pos = this->_output_stream.str().find(CRLF CRLF);
+	header_pos = this->_output_stream.str().find("\n\n");
 	if (header_pos != std::string::npos)
 	{
-		body_string = this->_output_stream.str().substr(header_pos + 4);
+		body_string = this->_output_stream.str().substr(header_pos + 2);
 	}
 	return body_string;
 }
@@ -117,13 +119,13 @@ void CGI::execute()
 {
 	if (access(this->_binary.c_str(), X_OK) == -1)
 	{
-		throw HTTPException(500, "CGI not executable");
+		throw HTTPException(400, "CGI not executable");
 	}
 
-	int		readpipe[2];
-	int		writepipe[2];
+	int		cgi_writepipe[2];
+	int		cgi_readpipe[2];
 
-	if (pipe(readpipe) == -1 || pipe(writepipe) == -1)
+	if (pipe(cgi_writepipe) == -1 || pipe(cgi_readpipe) == -1)
 	{
 		throw HTTPException(500, "Pipe error");
 	}
@@ -134,36 +136,45 @@ void CGI::execute()
 	}
 	else if (this->_pid == 0) // child
 	{ 
-		dup2(writepipe[0], STDIN_FILENO);
-		close(writepipe[0]);
-		dup2(readpipe[1], STDOUT_FILENO);
-		close(readpipe[1]);
+		dup2(cgi_readpipe[0], STDIN_FILENO);
+		close(cgi_readpipe[0]);
+		dup2(cgi_writepipe[1], STDOUT_FILENO);
+		close(cgi_writepipe[1]);
 
 		std::auto_ptr<char *> meta_envp;
 		meta_envp = this->_prepare_meta_variables();
 		std::auto_ptr<char *> args;
 		args = this->_prepare_cgi_arg();
 
+		std::cerr << "binary to execute:" << this->_binary << std::endl; 
+		char **arguments;
+		arguments =	args.get();
+		std::cerr << "cgi args: " << std::endl;
+		while (arguments)
+		{
+			std::cerr << std::string(*arguments) << std::endl;
+			arguments++;
+		}
 		execve(this->_binary.c_str(), args.get(), meta_envp.get());
 		std::exit(1);
 	}
 	else
 	{
-		close(writepipe[0]);
-		close(readpipe[1]);
-		this->_read_pipefd = readpipe[0];
-		this->_write_pipefd = writepipe[1];
+		close(cgi_readpipe[0]);
+		close(cgi_writepipe[1]);
+		this->_read_pipefd = cgi_writepipe[0];
+		this->_write_pipefd = cgi_readpipe[1];
 		this->_time_since_last_activity = time(NULL);
 	}
 }
 
 void CGI::read_cgi_stream(const size_t &read_amount)
 {
-	std::auto_ptr<char> buffer(new char[read_amount + 1]);
+	std::auto_ptr<char> buffer(new char[read_amount]);
 	ssize_t				bytes_read = 0;
 
-	std::memset(buffer.get(), 0, read_amount + 1);
-	bytes_read = read(this->_read_pipefd, buffer.get(), sizeof(read_amount));
+	std::memset(buffer.get(), 0, read_amount);
+	bytes_read = read(this->_read_pipefd, buffer.get(), read_amount);
 	if (bytes_read == -1)
 	{
 		throw HTTPException(500, "Read failed");
@@ -205,13 +216,57 @@ void CGI::process_output()
 {
 	std::size_t header_pos;
 
-	header_pos = this->_output_stream.str().find(CRLF CRLF);
+	header_pos = this->_output_stream.str().find("\n\n");
 	if (header_pos == std::string::npos)
 	{
+		this->_response_status = 500;
 		throw std::runtime_error("Couldn't find header end");	
 	}
 	this->_parse_headers();
-	this->_headers.insert(std::make_pair("Content-Length", to_string(this->get_body_string().length())));
+	if (this->_headers.find("Location") != this->_headers.end()
+		&& this->_headers.find("Content-Type") != this->_headers.end()) // redirect with document
+	{
+		if (this->_headers.find("Status") == this->_headers.end())
+		{
+			this->_response_status = 500;
+			std::runtime_error("Missing status header");
+		}
+		std::stringstream	status_string;
+
+		status_string.str(this->_headers.at("Status"));
+		status_string >> this->_response_status;
+		if (this->_response_status != 302)
+		{
+			this->_response_status = 500;
+			std::runtime_error("Invalid status code");
+		}
+	}
+	else if (this->_headers.find("Location") != this->_headers.end())
+	{
+		this->_response_status = 302;
+	}
+	else if (this->_headers.find("Content-Type") != this->_headers.end())
+	{
+		try
+		{
+			std::stringstream	status_string;
+
+			status_string.str(this->_headers.at("Status"));
+			status_string >> this->_response_status;
+		}
+		catch (const std::out_of_range &e){}
+	}
+	else 
+	{
+		this->_response_status = 500;
+		throw std::runtime_error("Missing at least one header field");
+	}
+	this->_headers.erase("Status");
+}
+
+int	CGI::get_response_status() const
+{
+	return this->_response_status;
 }
 
 void CGI::_validate_header_field(const std::pair<std::string, std::string> &header_pair)
@@ -226,9 +281,13 @@ void CGI::_validate_header_field(const std::pair<std::string, std::string> &head
 		long int content_length = std::strtol(header_pair.second.c_str(), &end, 10);
 
 		if (content_length < 0)
+		{
 			throw std::runtime_error("Invalid Content-Length value");
+		}
 		else if (content_length == 0 && std::strcmp(end, "\0") != 0)
+		{
 			throw std::runtime_error("Invalid conversion");
+		}
 	}
 }
 
@@ -240,7 +299,7 @@ void CGI::_parse_headers()
 	std::pair<std::string, std::string>								header_field_pair;
 	std::pair<std::map<std::string, std::string>::iterator,bool>	insert_return;
 
-	while (getline_CRLF(this->_output_stream, line) && !line.empty())
+	while (std::getline(this->_output_stream, line) && !line.empty())
 	{
 		separator_index = line.find(':');
 		whitespace_index = line.find_first_of(WHITESPACE_CHARACTERS);
@@ -266,7 +325,6 @@ std::auto_ptr<char *> CGI::_prepare_meta_variables()
 		index++;
 	}
 	env_arr.get()[index] = NULL;
-
 	return env_arr;
 }
 
@@ -283,7 +341,6 @@ std::auto_ptr<char *> CGI::_prepare_cgi_arg()
 		index++;
 	}
 	args.get()[index] = NULL; 
-
 	return args;
 }
 

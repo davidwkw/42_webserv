@@ -230,7 +230,8 @@ std::string string_vector_to_string(const std::vector<std::string> &vect, char d
 {
 	std::stringstream ss;
   
-    for (std::vector<std::string>::const_iterator cit = vect.begin(); cit != vect.end() ;cit++) {
+    for (std::vector<std::string>::const_iterator cit = vect.begin(); cit != vect.end() ;cit++)
+	{
         ss << *cit << delimiter;
     }
     return ss.str();
@@ -239,9 +240,13 @@ std::string string_vector_to_string(const std::vector<std::string> &vect, char d
 std::string prune_http_protocol(const std::string &domain_str)
 {
 	if (domain_str.find("https:\\\\") == std::string::npos)
+	{
 		return domain_str;
+	}
 	else if (domain_str.find("http:\\\\") == std::string::npos)
+	{
 		return domain_str;
+	}
 	return domain_str.substr(domain_str.find_last_of('\\'), 7);
 }
 

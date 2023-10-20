@@ -248,8 +248,8 @@ std::multimap<std::string, std::string> Config::parse_block_directives(const std
 
 std::vector<std::string> Config::find_normal_directive(const std::string &directive_key) const
 {
-	std::map<std::string, std::string>::const_iterator cit;
-	std::vector<std::string> ret_vector;
+	std::map<std::string, std::string>::const_iterator	cit;
+	std::vector<std::string>							ret_vector;
 
 	cit = this->_directives.find(directive_key);
 	if (cit != this->_directives.end())
@@ -261,20 +261,22 @@ std::vector<std::string> Config::find_normal_directive(const std::string &direct
 
 std::vector<std::vector<std::string > > Config::find_array_directive(const std::string &directive_key) const
 {
-	std::map<std::string, std::string>::const_iterator	cit;
 	std::vector<std::vector<std::string> >				ret_vector;
+	std::string directive;
 
-	cit = this->_directives.find(directive_key);
-	if (cit != this->_directives.end())
+	try
 	{
+		directive = this->_directives.at(directive_key);
 		std::vector<std::string> directive_vect;
 
-		directive_vect = tokenise_str(cit->second, ';');
+		directive_vect = tokenise_str(directive, ';');
 		for (std::vector<std::string>::iterator it = directive_vect.begin(); it != directive_vect.end(); it++)
 		{
 			ret_vector.push_back(tokenise_str(*it, ' '));
 		}
 	}
+	catch(const std::out_of_range& e)
+	{}
 	return ret_vector;
 }
 	

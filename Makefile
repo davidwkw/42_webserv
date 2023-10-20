@@ -18,7 +18,7 @@ CXX = g++
 
 CPPFLAGS := -Iincludes $(INC_FLAGS) -MMD -MP
 
-CXXFLAGS = -Wall -Wextra -Werror -std=c++98 -pedantic
+CXXFLAGS = -Wall -Wextra -Werror -std=c++98 -pedantic -g
 
 RM = rm
 

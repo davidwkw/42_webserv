@@ -101,15 +101,9 @@ std::string	Request::_extract_target_file(const std::string &uri_string)
 
 void Request::_parse_request_line(std::stringstream &ss)
 {
-	std::vector<std::string>	request_line_tokens;
 	std::string					line;
 
 	getline_CRLF(ss, line);
-	request_line_tokens = tokenise_str(line);
-	if (request_line_tokens.size() != 3)
-	{
-		throw HTTPException(400, "Invalid request start line");
-	}
 	this->_request_start_line.construct(line);
 }
 

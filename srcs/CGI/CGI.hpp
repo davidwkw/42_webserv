@@ -33,6 +33,7 @@ class CGI
 		};
 
 		CGI();
+		CGI(const std::string &path);
 		~CGI();
 
 		void					add_arg(const std::string &arg);
@@ -57,6 +58,7 @@ class CGI
 		int									get_read_fd() const;
 		ProcessState						get_state() const;
 		pid_t								get_pid() const;
+		int									get_response_status() const;
 
 		void								set_pid(pid_t pid);
 		void								set_binary(const std::string &binary);
@@ -72,6 +74,7 @@ class CGI
 		time_t								_time_since_last_activity;
 		std::stringstream					_output_stream;
 		std::map<std::string, std::string>	_headers;
+		int									_response_status;
 
 		void					_validate_header_field(const std::pair<std::string, std::string> &header_pair);
 		void					_parse_headers();

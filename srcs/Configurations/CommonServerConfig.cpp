@@ -49,7 +49,10 @@ std::vector<std::string> CommonServerConfig::error_log() const
 
 std::set<std::string>	CommonServerConfig::limit_except() const
 {
-	return std::set<std::string>(this->find_normal_directive("limit_except").begin(), this->find_normal_directive("limit_except").end());
+	std::vector<std::string> limit_except_directive;
+
+	limit_except_directive = this->find_normal_directive("limit_except");
+	return std::set<std::string>(limit_except_directive.begin(), limit_except_directive.end());
 }
 
 std::string CommonServerConfig::root() const

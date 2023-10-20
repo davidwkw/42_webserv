@@ -34,7 +34,6 @@ void HTTPServer::accept_connection()
 	{
 		return;
 	}
-
 	try
 	{
 		this->_fd_to_client_map.insert(std::make_pair(accept_fd, new Client(accept_fd, this->_buffer_size)));
@@ -43,8 +42,8 @@ void HTTPServer::accept_connection()
 	{
 		return;
 	}
-
 	insert_into_client_read_fds(accept_fd);
+	std::cerr << "new connection fd is: " << accept_fd << std::endl;
 }
 
 void HTTPServer::handle_request(const int &fd)
@@ -54,24 +53,45 @@ void HTTPServer::handle_request(const int &fd)
 		Client		&current_client = *(this->_fd_to_client_map.at(fd));
 		std::size_t	bytes_read;
 
-		bytes_read = current_client.handle_request();
+		bytes_read = current_client.read_to_buffer();
 		if (bytes_read <= 0)
 		{
+			std::cerr << "client disconnected" << std::endl;
 			this->remove_fd(fd);
 			close(fd);
 			return;
 		}
-		if (current_client.get_client_state() == Client::VALIDATING_REQUEST)
+
+		if (current_client.get_client_state() == Client::READING_REQUEST_HEADERS)
+		{
+			current_client.handle_request_headers();
+			if (current_client.get_client_state() == Client::REQUEST_HEADERS_CONSTRUCTED)
+			{
+				this->_assign_config_to_client(fd);
+			}
+		}
+		
+		if (current_client.get_client_state() == Client::REQUEST_HEADERS_CONSTRUCTED)
+		{
+			current_client.check_request_body();
+		}
+		
+		if (current_client.get_client_state() == Client::READING_REQUEST_BODY)
+		{
+			current_client.handle_request_body();
+		}
+		
+		if (current_client.get_client_state() == Client::VALIDATING_REQUEST
+		|| current_client.get_client_state() == Client::PROCESSING_EXCEPTION)
 		{
 			insert_into_client_write_fds(fd);
 			remove_from_client_read_fd(fd);
-			this->_assign_config_to_client(fd);
+			// this->_assign_config_to_client(fd);
 		}
 	}
 	catch (const std::out_of_range &e)
 	{
 		this->remove_fd(fd);
-		return;
 	}
 }
 
@@ -79,12 +99,14 @@ void HTTPServer::handle_response(const int &fd)
 {
 	try
 	{
-		this->_fd_to_client_map.at(fd)->handle_response();
+		Client &client = *(this->_fd_to_client_map.at(fd));
+
+		client.handle_response();
 		if (this->_fd_to_client_map.at(fd)->get_client_state() == Client::FINISHED_PROCESSING)
 		{
-			this->_fd_to_client_map.erase(fd);
-			this->remove_from_client_write_fd(fd);
 			close(fd);
+			std::cerr << "before removing fd" << std::endl;
+			this->remove_fd(fd);
 		}
 	}
 	catch(const std::out_of_range& e)
@@ -173,7 +195,7 @@ void HTTPServer::_assign_config_to_client(const int &fd)
 		{
 			server_config_index = 0;
 		}
-		this->_fd_to_client_map.at(fd)->set_server_config(&this->_server_configs[server_config_index]);
+		this->_fd_to_client_map.at(fd)->set_server_config(new ServerConfig(this->_server_configs[server_config_index]));
 	}
 	catch (const std::out_of_range &e)
 	{

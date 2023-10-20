@@ -1,3 +1,7 @@
 refactor requestbodyfactory to return a common interface rather than a data object that has data structures of both multipart and form encoded part
 
 should probably throw a detailed exception when dealing with request body rather than keep returning empty string
+
+figure out why generating the autoindex html doesn't work
+
+refactor server_config and common_server_config into 1
