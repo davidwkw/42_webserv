@@ -209,7 +209,6 @@ void WebServer::_perform_socket_io()
                 current_server.handle_response(current_fd);
             }
         }
-
         current_server.timeout_idle_connections(REQUEST_TIMEOUT);
     }
 }
