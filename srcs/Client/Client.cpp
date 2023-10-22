@@ -181,12 +181,13 @@ void Client::set_client_state(const ClientState &state)
 
 std::size_t Client::read_to_buffer()
 {
-	std::auto_ptr<char>	buffer(new char[this->_buffer_size + 1]);
+	std::auto_ptr<char>	buffer(new char[this->_buffer_size]);
 	std::size_t			bytes_read;
 
-	std::memset(buffer.get(), 0, this->_buffer_size + 1);
+	std::memset(buffer.get(), 0, this->_buffer_size);
 	if ((bytes_read = recv(this->_fd, buffer.get(), this->_buffer_size, MSG_NOSIGNAL)) <= 0)
 	{
+		std::cerr << "failed recv" << std::endl;
 		return bytes_read;
 	}
 	this->_buffer_stream << std::string(buffer.get());
@@ -994,8 +995,6 @@ void Client::_handle_redirect()
 
 void Client::_configure_common_config()
 {
-	std::cerr << "endpoint: " << this->_endpoint << std::endl;
-
 	if (!this->_endpoint.empty())
 	{
 		try

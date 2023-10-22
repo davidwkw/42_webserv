@@ -1,4 +1,5 @@
 #include "WebServer.hpp"
+#include <cstring>
 
 namespace ft
 {
@@ -33,10 +34,12 @@ std::string WebServer::get_config_string()
 void WebServer::run()
 {   
     struct timeval  timeout = {};
-    int             activity;
+    int             activity = 0;
     int             server_max_fd = 0;
     int             max_fd = 0;
 
+    errno = 0;
+    signal(SIGPIPE, SIG_IGN);
     this->_initialise_socket_fd();
     this->_append_listen_sockets_to_allfd(server_max_fd);
 
@@ -49,9 +52,15 @@ void WebServer::run()
         this->_append_read_sockets_to_readfd(max_fd);
         this->_append_write_sockets_to_writefd(max_fd);
         activity = select(max_fd + 1, &this->_read_fds , &this->_write_fds , NULL , this->_have_clients() ? &timeout : NULL);
+        std::cerr << "activity: " << activity << std::endl;
+        if (errno != 0)
+        {
+            std::cerr << "error is : " << std::strerror(errno) << std::endl; 
+        }
         if ((activity < 0) && (errno != EINTR))
         {  
-            this->_eject_all_clients(); 
+            this->_eject_all_clients();
+            continue;
         }
         this->_accept_incoming_connections();
         this->_perform_socket_io();
@@ -132,6 +141,7 @@ void WebServer::_append_read_sockets_to_readfd(int &max_fd)
         std::list<int>	client_read_fd_list;
 
 		client_read_fd_list = current_server.get_client_read_fds();
+        std::cerr << "client_readfds size: " << client_read_fd_list.size() << std::endl; 
         for (std::list<int>::iterator it2 = client_read_fd_list.begin(); it2 != client_read_fd_list.end(); it2++)
         {
             int &current_fd = *it2;
