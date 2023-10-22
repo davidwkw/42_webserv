@@ -141,8 +141,6 @@ void Response::remove_header(const std::string &key)
 
 void Response::construct_response_message_format() // TODO: refactor
 {
-	std::cerr << "in construct_response_message_format" << std::endl;
-
 	if (this->_message_format.get() == NULL)
 	{
 		this->_message_format.reset(new std::stringstream);
@@ -165,10 +163,8 @@ std::string Response::read_response(std::size_t buffer_size)
 	std::memset(buffer.get(), 0, buffer_size);
 	if (*(this->_message_format))
 	{
-		std::cerr << "reading unfinished message format" << std::endl;
 		if (this->_message_format->str().size() < buffer_size)
 		{
-			std::cerr << "buffer greater than message format size" << std::endl;
 			remaining_char_count -= this->_message_format->str().size();
 			buffer_offset += this->_message_format->str().size();
 		}
@@ -176,11 +172,8 @@ std::string Response::read_response(std::size_t buffer_size)
 	}
 	if (!(*(this->_message_format)) && this->_body_stream.get() != NULL)
 	{
-		std::cerr << "before read pos: " << this->_body_stream->tellg() << std::endl;
 		this->_body_stream->read(buffer.get() + buffer_offset, remaining_char_count);
-		std::cerr << "after read pos: " << this->_body_stream->tellg() << std::endl;
 	}
-	std::cerr << "string read from read response: " << std::string(buffer.get()) << std::endl;
 	return std::string(buffer.get());
 }
 
@@ -228,7 +221,6 @@ bool Response::has_been_completely_read() const
 
 	if (this->_body_stream.get() == NULL)
 	{
-		std::cerr << "setting body stream read status" << std::endl;
 		bodystream_read_status = true;
 	}
 	else

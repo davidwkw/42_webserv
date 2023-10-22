@@ -269,21 +269,15 @@ void Client::handle_response()
 	{
 		if (this->_state == VALIDATING_REQUEST)
 		{
-			std::cerr << "matching location" << std::endl;
 			this->_match_location();
-			std::cerr << "location matched is:" << this->_endpoint << std::endl;
-			std::cerr << "configuring common config" << std::endl;
 			this->_configure_common_config();
-			std::cerr << "method checking" << std::endl;
 			this->_is_method_allowed();
 			this->_dir_path = this->_common_server_config->root() + (this->_endpoint.empty() ? "/" : this->_endpoint);
-			std::cerr << "dir path: " << _dir_path << std::endl;
 			this->_state = PROCESSING_RESPONSE;
 		}
 
 		if (this->_state == PROCESSING_RESPONSE)
 		{
-			std::cerr << "target file: " << this->_request.get_target_file() << std::endl;
 			if (!this->_request.get_target_file().empty() && this->_is_target_cgi()) // if there was a file destination and that file is a cgi script
 			{
 				this->_initialize_cgi();
@@ -350,7 +344,6 @@ void Client::handle_response()
 				if (&this->_request.get_body() != NULL
 					&& this->_request.get_raw_body_stream().read(buffer.get(), CGI_READ_BUFFER_SIZE))
 				{
-					std::cerr << "writing to cgi" << std::endl;
 					this->_cgi->write_to_cgi(buffer.get());
 					this->_cgi->update_time_since_last_activity(time(NULL));
 				}
@@ -360,10 +353,8 @@ void Client::handle_response()
 				}
 			}
 
-			std::cerr << std::boolalpha << FD_ISSET(read_fd, &read_set) << std::endl;
 			if (FD_ISSET(read_fd, &read_set))
 			{
-				std::cerr << "reading from cgi" << std::endl;
 				this->_cgi->read_cgi_stream(CGI_READ_BUFFER_SIZE);
 				this->_cgi->update_time_since_last_activity(time(NULL));
 			}
@@ -378,7 +369,6 @@ void Client::handle_response()
 			{
 				try
 				{
-					std::cerr << "before processing output..." << std::endl;
  					this->_cgi->process_output();
 				}
 				catch (const std::exception &e)
@@ -412,37 +402,32 @@ void Client::handle_response()
 		{
 			this->_response.set_header("Content-Length", to_string(calc_input_stream_size(*this->_response.get_body_stream())));
 		}
-		std::cerr << "after setting header" << std::endl;
 		this->_response.construct_response_message_format();
-		std::cerr << "after constructing message format" << std::endl;
 	}
 
 	if (this->_state == SENDING_RESPONSE)
 	{
-		int sent_length;
+		int			sent_length = 0;
+		int			length_to_send = 0;
+		std::string read_response_str;
 
-		std::string read_response_str = this->_response.read_response(this->_buffer_size);
-		std::cerr << "response block sent: =======\n" << read_response_str << "============" << std::endl;
-		sent_length = send(this->_fd, read_response_str.c_str(), this->_buffer_size, MSG_NOSIGNAL);
-		std::cerr << "bytes sent: " << sent_length << std::endl;
+		read_response_str = this->_response.read_response(this->_buffer_size);
+		length_to_send = (read_response_str.length() < this->_buffer_size) ? read_response_str.length() : this->_buffer_size;
+		sent_length = send(this->_fd, read_response_str.c_str(), length_to_send, MSG_NOSIGNAL);
 		if (sent_length == -1)
 		{
 			this->_state = FINISHED_PROCESSING;
 		}
-		else if (sent_length < static_cast<int>(this->_buffer_size)) // todo: somethng wrong here
+		else if (sent_length < static_cast<int>(length_to_send)) // todo: somethng wrong here
 		{
-			std::cerr << "unreading response" << std::endl;
-			this->_response.unread_response(this->_buffer_size - sent_length);
+			this->_response.unread_response(length_to_send - sent_length);
 		}
 	}
-	std::cerr << "checking if completely read" << std::endl;
 	if (this->_state == SENDING_RESPONSE
 		&& this->_response.has_been_completely_read())
 	{
-		std::cerr << "completely read" << std::endl;
 		this->_state = FINISHED_PROCESSING;
 	}
-	std::cerr << "end of handle reponse block" << std::endl;
 }
 
 std::size_t Client::_get_body_size()
@@ -504,15 +489,11 @@ std::string Client::_identify_boundary_string()
 		return result;
 	}
 	boundary_line = trim_chars(result.substr(result.find(';') + 1), WHITESPACE_CHARACTERS);
-	std::cerr << "boundary_line: " << boundary_line << std::endl;
 	kv_pair = extract_key_value_pair(boundary_line, '=');
-	std::cerr << "first key: " << trim_chars(kv_pair.first, WHITESPACE_CHARACTERS) << std::endl;
 	if (trim_chars(kv_pair.first, WHITESPACE_CHARACTERS) != "boundary")
 	{
-		std::cerr << "first item not boundary" << std::endl;
 		return result;
 	}
-	std::cerr << "boundary: " << trim_chars(kv_pair.second, "\"") << std::endl;
 	return trim_chars(kv_pair.second, "\"");
 }
 
@@ -531,7 +512,6 @@ void Client::_check_content_length_header_within_limits()
 
 void Client::_create_request_body()
 {
-	std::cerr << "within create request body call" << std::endl;
 	std::string	content_type;
 	std::string parsed_body_string;
 
@@ -548,20 +528,17 @@ void Client::_create_request_body()
 	}
 
 	content_type = this->_identify_content_type();
-	std::cerr << content_type << std::endl;
 	if (content_type == "multipart/form-data")
 	{
 		std::string boundary_string;
 
 		boundary_string = this->_identify_boundary_string();
-		std::cerr << "Request body received: " << this->_buffer_stream.str() << std::endl;
 		this->_request.set_body(RequestBodyFactory(this->_buffer_stream.str()).build_multipart(boundary_string));
 	}
 	else if (content_type == "application/x-www-form-urlencoded")
 	{
 		this->_request.set_body(RequestBodyFactory(this->_buffer_stream.str()).build_form_encoded());
 	}
-	std::cerr << "after making request body" << std::endl; 
 }
 
 void Client::_parse_chunked_request_body(std::stringstream &stream)
@@ -643,7 +620,6 @@ void Client::_check_request_body_headers()
 		std::string content_type;
 
 		content_type = this->_identify_content_type();
-		std::cerr << "content_type: " <<  content_type << std::endl;
 		if (content_type.empty() 
 			|| (content_type != "multipart/form-data"
 				&& content_type != "application/x-www-form-urlencoded"))

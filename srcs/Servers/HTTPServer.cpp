@@ -96,7 +96,6 @@ void HTTPServer::handle_response(const int &fd)
 		if (this->_fd_to_client_map.at(fd)->get_client_state() == Client::FINISHED_PROCESSING)
 		{
 			close(fd);
-			std::cerr << "before removing fd" << std::endl;
 			this->remove_fd(fd);
 		}
 	}

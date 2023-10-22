@@ -188,7 +188,6 @@ std::string Request::_parse_chunked_request_body()
 
         if (chunk_line_stream.fail())
 		{
-            std::cerr << "Invalid chunk size format: " << line << std::endl;
             throw HTTPException(400, "Invalid chunk size format");
         }
 
