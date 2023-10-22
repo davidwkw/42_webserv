@@ -5,7 +5,8 @@
 #define WHITESPACE_CHARACTERS " \t\n\r\f\v"
 #define PORT 8080
 #define HTTP_PROTOCOL 1.1
-#define DEFAULT_CONFIG_PATH "configs/default.conf"
+#define CONFIG_DIRECTORY "configs/"
+#define DEFAULT_CONFIG_PATH "default.conf"
 #define ERROR_PAGE_DIR "public/error_pages/"
 #define DEFAULT_ERROR_PAGE_DIR "default/"
 #define CRLF "\r\n"

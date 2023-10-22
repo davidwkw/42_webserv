@@ -8,7 +8,7 @@ int	main(int argc, char **argv)
 {
 	if (argc > 2)
 	{
-		std::cerr << "Usage: ./webserv [configuration file]" << std::endl;
+		std::cerr << "Usage: ./webserv [configuration file within configs folder]" << std::endl;
 		return EXIT_FAILURE;
 	}
 	ft::Logger logger("webserver_log.txt");
@@ -18,6 +18,7 @@ int	main(int argc, char **argv)
 	std::cerr << "Launching webserv with: " << conf_path << std::endl;
 	try
 	{
+		conf_path = std::string(CONFIG_DIRECTORY) + conf_path;
 		ft::WebServer server(conf_path);
 
 		server.run();
