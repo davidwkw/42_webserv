@@ -27,7 +27,6 @@ class Client
 			READING_REQUEST_HEADERS,
 			REQUEST_HEADERS_CONSTRUCTED,
 			READING_REQUEST_BODY,
-			VALIDATING_REQUEST,
 			PROCESSING_RESPONSE,
 			PROCESSING_EXCEPTION,
 			PROCESSING_CGI,
@@ -56,7 +55,8 @@ class Client
 		std::size_t					handle_request();
 		void 						handle_response();
 		std::size_t					read_to_buffer();
-		void						handle_request_headers();
+		void						handle_request_header_construction();
+		void 						process_header();
 		void						handle_request_body();
 		void						check_request_body();
 

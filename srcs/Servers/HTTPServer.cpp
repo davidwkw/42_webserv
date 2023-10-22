@@ -53,10 +53,11 @@ void HTTPServer::handle_request(const int &fd)
 
 		if (current_client.get_client_state() == Client::READING_REQUEST_HEADERS)
 		{
-			current_client.handle_request_headers();
+			current_client.handle_request_header_construction();
 			if (current_client.get_client_state() == Client::REQUEST_HEADERS_CONSTRUCTED)
 			{
 				this->_assign_config_to_client(fd);
+				current_client.process_header();
 			}
 		}
 		
@@ -71,9 +72,10 @@ void HTTPServer::handle_request(const int &fd)
 			current_client.handle_request_body();
 		}
 		
-		if (current_client.get_client_state() == Client::VALIDATING_REQUEST
+		if (current_client.get_client_state() == Client::PROCESSING_RESPONSE
 		|| current_client.get_client_state() == Client::PROCESSING_EXCEPTION)
 		{
+			std::cerr << "finished processing" << std::endl;
 			insert_into_client_write_fds(fd);
 			remove_from_client_read_fd(fd);
 		}

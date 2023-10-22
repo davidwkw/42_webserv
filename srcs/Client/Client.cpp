@@ -193,7 +193,7 @@ std::size_t Client::read_to_buffer()
 	return bytes_read;
 }
 
-void Client::handle_request_headers()
+void Client::handle_request_header_construction()
 {
 	try
 	{
@@ -227,7 +227,7 @@ void Client::check_request_body()
 		else
 		{
 			this->_buffer_stream.str("");
-			this->_state = VALIDATING_REQUEST;
+			this->_state = PROCESSING_RESPONSE;
 		}
 	}
 	catch(const HTTPException& e)
@@ -253,9 +253,10 @@ void Client::handle_request_body()
 			std::cerr << "not yet received full body" << std::endl;
 			return;	
 		}
+		std::cerr << "received full body" << std::endl;
 		this->_create_request_body();
 		this->_buffer_stream.str("");
-		this->_state = VALIDATING_REQUEST;
+		this->_state = PROCESSING_RESPONSE;
 	}
 	catch(const HTTPException& e)
 	{
@@ -269,15 +270,6 @@ void Client::handle_response()
 {
 	try
 	{
-		if (this->_state == VALIDATING_REQUEST)
-		{
-			this->_match_location();
-			this->_configure_common_config();
-			this->_is_method_allowed();
-			this->_dir_path = this->_common_server_config->root() + (this->_endpoint.empty() ? "/" : this->_endpoint);
-			this->_state = PROCESSING_RESPONSE;
-		}
-
 		if (this->_state == PROCESSING_RESPONSE)
 		{
 			if (!this->_request.get_target_file().empty() && this->_is_target_cgi()) // if there was a file destination and that file is a cgi script
@@ -430,6 +422,14 @@ void Client::handle_response()
 	{
 		this->_state = FINISHED_PROCESSING;
 	}
+}
+
+void Client::process_header()
+{
+	this->_match_location();
+	this->_configure_common_config();
+	this->_is_method_allowed();
+	this->_dir_path = this->_common_server_config->root() + (this->_endpoint.empty() ? "/" : this->_endpoint);
 }
 
 std::size_t Client::_get_body_size()
@@ -942,9 +942,9 @@ void Client::_handle_exception()
 			{
 				if (cit->at(index) == status_code)
 				{
-					file_name = cit->at(cit->size() - 1);
+					file_name = cit->back();
+					break;
 				}
-				break;
 			}
 			catch(const std::out_of_range& e)
 			{
@@ -994,6 +994,8 @@ void Client::_handle_redirect()
 
 void Client::_configure_common_config()
 {
+	std::cerr << "endpoint: " << this->_endpoint << std::endl;
+
 	if (!this->_endpoint.empty())
 	{
 		try
