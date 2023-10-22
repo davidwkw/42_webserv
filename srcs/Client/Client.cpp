@@ -1039,7 +1039,7 @@ std::string Client::_translate_binary_path()
 	}
 	if (binary_path.substr(2).empty()) // path of the file is itself?
 	{
-		binary_path = this->_dir_path + this->_dir_path + this->_request.get_target_file();
+		binary_path = this->_dir_path + this->_request.get_target_file();
 	}
 	return binary_path;
 }
@@ -1081,10 +1081,6 @@ void Client::_initialize_cgi()
 	if (binary_path.substr(binary_path.find_last_of('/') + 1) != this->_request.get_target_file())
 	{
 		this->_cgi->add_arg(this->_dir_path + this->_request.get_target_file());
-	}
-	else
-	{
-		this->_cgi->add_arg("");
 	}
 
 	for (char **envp = environ; *envp; envp++)

@@ -48,8 +48,6 @@ void WebServer::run()
         this->_reinitialize_fd_sets();
         this->_append_read_sockets_to_readfd(max_fd);
         this->_append_write_sockets_to_writefd(max_fd);
-        std::cerr << "server max fd: " << server_max_fd << std::endl;
-        std::cerr << "max fd: " << max_fd << std::endl;
         activity = select(max_fd + 1, &this->_read_fds , &this->_write_fds , NULL , this->_have_clients() ? &timeout : NULL);
         if ((activity < 0) && (errno != EINTR))
         {  
@@ -177,9 +175,7 @@ void WebServer::_accept_incoming_connections()
         
         if (FD_ISSET(current_server.get_listen_socket_fd(), &this->_read_fds))
         {
-            std::cerr << "Client attempting connection..." << std::endl;
             current_server.accept_connection();
-            std::cerr << "Client successfully connected" << std::endl;
         }
     }
 }

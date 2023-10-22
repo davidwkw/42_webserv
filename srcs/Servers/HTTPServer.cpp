@@ -32,7 +32,6 @@ void HTTPServer::accept_connection()
 		return;
 	}
 	insert_into_client_read_fds(accept_fd);
-	std::cerr << "new connection fd is: " << accept_fd << std::endl;
 }
 
 void HTTPServer::handle_request(const int &fd)
@@ -45,7 +44,6 @@ void HTTPServer::handle_request(const int &fd)
 		bytes_read = current_client.read_to_buffer();
 		if (bytes_read <= 0)
 		{
-			std::cerr << "client disconnected" << std::endl;
 			this->remove_fd(fd);
 			close(fd);
 			return;

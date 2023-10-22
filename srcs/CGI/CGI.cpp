@@ -134,7 +134,7 @@ void CGI::execute()
 	{
 		throw HTTPException(500, "Fork failure");
 	}
-	else if (this->_pid == 0) // child
+	else if (this->_pid == 0)
 	{ 
 		dup2(cgi_readpipe[0], STDIN_FILENO);
 		close(cgi_readpipe[0]);
