@@ -38,6 +38,8 @@ void HTTPServer::handle_request(const int &fd)
 {
 	try
 	{
+		this->_fd_to_last_activity_map.at(fd) = time(NULL);
+
 		Client		&current_client = *(this->_fd_to_client_map.at(fd));
 		std::size_t	bytes_read;
 
@@ -65,10 +67,9 @@ void HTTPServer::handle_request(const int &fd)
 		
 		if (current_client.get_client_state() == Client::READING_REQUEST_BODY)
 		{
+			std::cerr << "handling request body" << std::endl;
 			current_client.handle_request_body();
 		}
-
-		this->_fd_to_last_activity_map.at(fd) = time(NULL);
 		
 		if (current_client.get_client_state() == Client::VALIDATING_REQUEST
 		|| current_client.get_client_state() == Client::PROCESSING_EXCEPTION)
@@ -87,10 +88,10 @@ void HTTPServer::handle_response(const int &fd)
 {
 	try
 	{
+		this->_fd_to_last_activity_map.at(fd) = time(NULL);
 		Client &client = *(this->_fd_to_client_map.at(fd));
 
 		client.handle_response();
-		this->_fd_to_last_activity_map.at(fd) = time(NULL);
 		if (this->_fd_to_client_map.at(fd)->get_client_state() == Client::FINISHED_PROCESSING)
 		{
 			close(fd);

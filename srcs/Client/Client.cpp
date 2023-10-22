@@ -247,8 +247,10 @@ void Client::handle_request_body()
 			this->_parse_chunked_request_body(this->_buffer_stream);
 		}
 		this->_check_body_size_within_limits(); // for chunked encoded, size checking will be inaccurate up to 9 + the length of the chunk-size line; would consider as a better than the alternative where a user can greatly exceed max size
+		
 		if (!this->_has_received_complete_body())
 		{
+			std::cerr << "not yet received full body" << std::endl;
 			return;	
 		}
 		this->_create_request_body();
@@ -463,6 +465,7 @@ bool Client::_has_received_complete_body()
 	}
 	else if (!this->_request.get_header("Content-Length").empty())
 	{
+		std::cerr << "current length: " <<  this->_get_body_size() << std::endl;
 		std::string		content_length;
 		unsigned long	content_length_value;
 
@@ -937,13 +940,15 @@ void Client::_handle_exception()
 		{
 			try
 			{
-				cit->at(index) == status_code;
-				file_name = cit->at(cit->size());
+				if (cit->at(index) == status_code)
+				{
+					file_name = cit->at(cit->size() - 1);
+				}
 				break;
 			}
 			catch(const std::out_of_range& e)
 			{
-				continue;;
+				continue;
 			}
 		}
 	}
