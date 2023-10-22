@@ -119,7 +119,7 @@ void CGI::execute()
 {
 	if (access(this->_binary.c_str(), X_OK) == -1)
 	{
-		throw HTTPException(400, "CGI not executable");
+		throw HTTPException(500, "CGI not executable");
 	}
 
 	int		cgi_writepipe[2];

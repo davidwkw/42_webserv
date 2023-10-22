@@ -321,7 +321,7 @@ void Client::handle_response()
 					std::cerr << "updating state" << std::endl;
 					this->_cgi->update_state();
 				}
-				catch (std::exception const& e)
+				catch (const std::exception &e)
 				{
 					throw HTTPException(500, "CGI error");
 				}
@@ -385,7 +385,7 @@ void Client::handle_response()
 			}
 			
 			// only check timeout if still processing
-			if (this->_cgi->get_state() == CGI::PROCESSING && (time(NULL) - this->_cgi->get_time_since_last_activity()) > CGI_TIMEOUT)
+			if (this->_cgi->get_state() == CGI::PROCESSING && (std::difftime(time(NULL), this->_cgi->get_time_since_last_activity())) > CGI_TIMEOUT)
 			{
 				throw HTTPException(500, "CGI error");
 			}
@@ -579,12 +579,14 @@ void Client::_create_request_body()
 		std::string boundary_string;
 
 		boundary_string = this->_identify_boundary_string();
+		std::cerr << "Request body received: " << this->_buffer_stream.str() << std::endl;
 		this->_request.set_body(RequestBodyFactory(this->_buffer_stream.str()).build_multipart(boundary_string));
 	}
 	else if (content_type == "application/x-www-form-urlencoded")
 	{
 		this->_request.set_body(RequestBodyFactory(this->_buffer_stream.str()).build_form_encoded());
 	}
+	std::cerr << "after making request body" << std::endl; 
 }
 
 void Client::_parse_chunked_request_body(std::stringstream &stream)
@@ -708,6 +710,8 @@ void Client::_handle_method()
 	}
 	else if (this->_request.get_method() == "DELETE")
 	{
+		std::cerr << "delete dir path: " << this->_dir_path << std::endl;
+		std::cerr << "target file: " << this->_request.get_target_file() << std::endl;
 		this->_handle_delete(this->_dir_path + this->_request.get_target_file());
 	}
 }
@@ -920,78 +924,91 @@ void Client::_handle_post(const std::string &dir_path)
 	if (request_body.get_type() == "multipart/form-data")
 	{
 		std::map<int, RequestMultipart>	index_multipart;
+		std::vector<std::string>		files;
 
 		std::cerr << "looping through multiparts... " << std::endl;
 		index_multipart = request_body.get_index_multipart();
-		for (std::map<int, RequestMultipart>::iterator it = index_multipart.begin(); it != index_multipart.end(); it++)
+		try
 		{
-			RequestMultipart	&file_part = it->second; // for readability;
-			std::string			filename;
-			std::size_t			forward_slash_pos;
+			for (std::map<int, RequestMultipart>::iterator it = index_multipart.begin(); it != index_multipart.end(); it++)
+			{
+				RequestMultipart	&file_part = it->second; // for readability;
+				std::string			filename;
+				std::size_t			forward_slash_pos;
 
-			filename = file_part.get_filename();
-			if (filename.length() == 0) // missing filename, happens with drag and drop file upload;
-			{
-				throw HTTPException(400, "Missing filename");
-			}
-			// prune filename to its terminal component for security
-			forward_slash_pos = filename.rfind("/");
-			if (forward_slash_pos != std::string::npos)
-			{
-				filename = filename.substr(forward_slash_pos + 1);
-			}
-			std::cerr << "extracting file extension.." << std::endl;
-			if (extract_file_extension(filename).length() == 0)
-			{
-				throw HTTPException(400, "Missing file extension");
-			}
-			std::cerr << "checking if name is compatible with filesystem" << std::endl;
-			if (!is_system_compatible_filename(filename))
-			{
-				throw HTTPException(400, "Filename incompatible with system");
-			}
-			
-			std::cerr << "incoming filename is: " << filename << std::endl;
-
-			std::ofstream	outfile;
-			std::string		full_path;
-			
-			full_path = dir_path + filename;
-			std::cerr << "making file.." << std::endl;
-			{
-				std::ifstream filecheck;
-
-				filecheck.open(full_path.c_str());
-				if (filecheck.is_open())
+				filename = file_part.get_filename();
+				if (filename.length() == 0) // missing filename, happens with drag and drop file upload;
 				{
-					std::cerr << "file exists" << std::endl;
-					throw HTTPException(400, "File already exists");
+					throw HTTPException(400, "Missing filename");
 				}
+				// prune filename to its terminal component for security
+				forward_slash_pos = filename.rfind("/");
+				if (forward_slash_pos != std::string::npos)
+				{
+					filename = filename.substr(forward_slash_pos + 1);
+				}
+				std::cerr << "extracting file extension.." << std::endl;
+				if (extract_file_extension(filename).length() == 0)
+				{
+					throw HTTPException(400, "Missing file extension");
+				}
+				std::cerr << "checking if name is compatible with filesystem" << std::endl;
+				if (!is_system_compatible_filename(filename))
+				{
+					throw HTTPException(400, "Filename incompatible with system");
+				}
+				
+				std::cerr << "incoming filename is: " << filename << std::endl;
+
+				std::ofstream	outfile;
+				std::string		full_path;
+				
+				full_path = dir_path + filename;
+				std::cerr << "making file.." << std::endl;
+				{
+					std::ifstream filecheck;
+
+					filecheck.open(full_path.c_str());
+					if (filecheck.is_open())
+					{
+						std::cerr << "file exists" << std::endl;
+						throw HTTPException(400, "File already exists");
+					}
+				}
+				outfile.open(full_path.c_str());
+				if (!outfile.is_open())
+				{
+					throw HTTPException(500, "Error creating file");
+				}
+				std::cerr << "getting content.." << std::endl;
+				outfile << file_part.get_content();
+				outfile.close();
+				files.push_back(full_path);
 			}
-			outfile.open(full_path.c_str());
-			if (!outfile.is_open())
+		}
+		catch (const HTTPException &e)
+		{
+			for (std::vector<std::string>::iterator it = files.begin(); it != files.end(); it++)
 			{
-				throw HTTPException(500, "Error creating file");
+				remove(it->c_str());
 			}
-			std::cerr << "getting content.." << std::endl;
-			outfile << file_part.get_content();
-			outfile.close();
+			throw e;
 		}
 	}
 	this->_response.set_status_code(201);
 }
 
-void Client::_handle_delete(std::string file_path)
+void Client::_handle_delete(const std::string &file_path)
 {
-	if (file_path[file_path.length() - 1] == '/')
+	if (this->_request.get_target_file().empty())
 	{
-		file_path.erase(file_path.length() - 1);
+		throw HTTPException(400, "Bad request");
 	}
 	std::cout << "File to delete: " << file_path << std::endl;
-	// if (remove(file_path.c_str()) == -1)
-	// {
-	// 	throw HTTPException(400, "File not found");
-	// }
+	if (remove(file_path.c_str()) == -1)
+	{
+		throw HTTPException(404, "File not found");
+	}
 	this->_response.set_status_code(204);
 }
 
@@ -1027,13 +1044,12 @@ void Client::_handle_exception()
 	if (file_name.empty())
 	{
 		std::cerr << "couldn't find suitable error page using default" << std::endl;
-		file_name = "500.html"; // default for 500.html for everything.
+		file_name = std::string(DEFAULT_ERROR_PAGE_DIR) + status_code + ".html";
 	}
-	temp_stream->open((std::string(DEFAULT_ERROR_PAGE_DIR) + file_name).c_str());
+	temp_stream->open((std::string(ERROR_PAGE_DIR) + file_name).c_str());
 	if (!temp_stream->is_open())
 	{
-		std::cerr << "couldn't open error page" << std::endl;
-		throw std::runtime_error("Couldn't open exception file"); // this kills the server 
+		file_name = std::string(ERROR_PAGE_DIR) + std::string(DEFAULT_ERROR_PAGE_DIR) + "500.html";
 	}
 
 	std::string file_extension;

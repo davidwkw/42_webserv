@@ -6,7 +6,8 @@
 #define PORT 8080
 #define HTTP_PROTOCOL 1.1
 #define DEFAULT_CONFIG_PATH "configs/default.conf"
-#define DEFAULT_ERROR_PAGE_DIR "public/error_pages/"
+#define ERROR_PAGE_DIR "public/error_pages/"
+#define DEFAULT_ERROR_PAGE_DIR "default/"
 #define CRLF "\r\n"
 #define BUFFER_SIZE 8192
 #define TIMEOUT 1000*5
@@ -23,3 +24,4 @@
 #define CGI_GATEWAY_INTERFACE_VERSION 1.1
 #define SERVER_NAME "ft_webserv"
 #define SOFTWARE_VERSION 1.0
+#define REQUEST_TIMEOUT 5.0

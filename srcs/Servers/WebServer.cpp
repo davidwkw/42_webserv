@@ -49,9 +49,9 @@ void WebServer::run()
         this->_append_read_sockets_to_readfd(max_fd);
         this->_append_write_sockets_to_writefd(max_fd);
         std::cerr << "server max fd: " << server_max_fd << std::endl;
-        std::cerr << "max fd: " << max_fd << std::endl; 
-        activity = select(max_fd + 1, &this->_read_fds , &this->_write_fds , NULL , &timeout);
-        if ((activity < 0) && (errno != EINTR))  
+        std::cerr << "max fd: " << max_fd << std::endl;
+        activity = select(max_fd + 1, &this->_read_fds , &this->_write_fds , NULL , this->_have_clients() ? &timeout : NULL);
+        if ((activity < 0) && (errno != EINTR))
         {  
             throw std::runtime_error("Select error");
         }
@@ -213,7 +213,29 @@ void WebServer::_perform_socket_io()
                 current_server.handle_response(current_fd);
             }
         }
+
+        std::cerr << "before timing out connections" << std::endl;
+        current_server.timeout_idle_connections(REQUEST_TIMEOUT);
     }
+}
+
+bool WebServer::_have_clients()
+{
+    bool    result;
+
+    result = false;
+    for (std::map<unsigned int, HTTPServer *>::iterator it = this->_port_http_server_map.begin(); it != this->_port_http_server_map.end(); it++)
+    {
+        HTTPServer		&current_server = *(it->second);
+
+        if (current_server.have_clients())
+        {
+            result = true;
+            break;
+        }
+    }
+
+    return result;
 }
 
 }

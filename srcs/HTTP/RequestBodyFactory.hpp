@@ -1,6 +1,8 @@
 #pragma once
 
 #include <string>
+
+#include "../Exception/HTTPException.hpp"
 #include "RequestMultipart.hpp"
 #include "RequestMultipartFactory.hpp"
 #include "RequestBody.hpp"

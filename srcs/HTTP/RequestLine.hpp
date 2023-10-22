@@ -9,6 +9,7 @@
 
 #include "../utils/utils.hpp"
 #include "../../includes/macros.hpp"
+#include "../Exception/HTTPException.hpp"
 
 namespace ft
 {
@@ -48,7 +49,7 @@ namespace ft
 			void								_construct();
 			void								_parse_start_line();
 			void								_validate_method();
-
+			void								_validate_target();
 	};
 	
 }

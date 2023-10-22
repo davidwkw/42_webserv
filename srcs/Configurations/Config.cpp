@@ -261,8 +261,8 @@ std::vector<std::string> Config::find_normal_directive(const std::string &direct
 
 std::vector<std::vector<std::string > > Config::find_array_directive(const std::string &directive_key) const
 {
-	std::vector<std::vector<std::string> >				ret_vector;
-	std::string directive;
+	std::vector<std::vector<std::string> >	ret_vector;
+	std::string								directive;
 
 	try
 	{

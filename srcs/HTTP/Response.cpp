@@ -236,7 +236,6 @@ bool Response::has_been_completely_read() const
 	}
 	else
 	{
-		std::cerr << "before segfault" << std::endl;
 		bodystream_read_status = !(*this->_body_stream);
 	}
 	return !(*this->_message_format) && bodystream_read_status;

@@ -21,7 +21,6 @@ void Request::construct_message_format(const std::string &message_format_string)
 
 std::string Request::_validate_method(const std::string &method)
 {
-	// abit wonky innit?
 	const std::string valid_methods[8] = {
 		"OPTIONS",
 		"GET",
@@ -41,7 +40,7 @@ std::string Request::_validate_method(const std::string &method)
 		}
 	}
 
-	throw HTTPException(400, "Invalid method");
+	throw HTTPException(405, "Invalid method");
 	return method;
 }
 

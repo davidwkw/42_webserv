@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ctime>
 #include <sstream>
 #include <string>
 #include <algorithm>
@@ -7,6 +8,7 @@
 #include <vector>
 #include <list>
 #include <memory>
+
 #include "../utils/utils.hpp"
 #include "../Configurations/webserv-configurations.hpp"
 #include "Server.hpp"
@@ -25,6 +27,9 @@ class HTTPServer : public Server
 		void			accept_connection();
 		void			handle_request(const int &fd);
 		void			handle_response(const int &fd);
+		void			timeout_idle_connections(double timeout);
+
+		bool			have_clients() const;
 
 		std::list<int>	get_client_write_fds() const;
 		std::list<int>	get_client_read_fds() const;
@@ -40,6 +45,7 @@ class HTTPServer : public Server
 
 	private:
 		std::map<int, Client *>		_fd_to_client_map;
+		std::map<int, time_t>		_fd_to_last_activity_map;
 		std::vector<ServerConfig>	_server_configs;
 		std::list<int>				_client_read_fds;
 		std::list<int>				_client_write_fds;

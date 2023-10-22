@@ -52,7 +52,6 @@ std::string RequestLine::get_protocol() const
 std::string RequestLine::get_target_file() const
 {
 	std::string	decoded_target;
-	int			count;
 	std::size_t	dot_pos;
 	std::size_t	leading_backslash_pos;
 	std::size_t	trailing_backslash_pos;
@@ -60,17 +59,14 @@ std::string RequestLine::get_target_file() const
 
 	decoded_target = url_decode(this->_target);
 	decoded_target = decoded_target.substr(0, decoded_target.find_first_of('?'));
-	count = std::count(decoded_target.begin(), decoded_target.end(), '.');
-	if (count == 0)
+	dot_pos = decoded_target.find_first_of('.');
+	if (dot_pos == std::string::npos)
 	{
 		return target_file_name;
 	}
-
-	dot_pos = decoded_target.find_first_of('.');
 	leading_backslash_pos = decoded_target.find_last_of('/', dot_pos);
 	trailing_backslash_pos = decoded_target.find_first_of('/', dot_pos);
-	target_file_name = decoded_target.substr(leading_backslash_pos + 1, trailing_backslash_pos);
-
+	target_file_name = decoded_target.substr(leading_backslash_pos + 1, trailing_backslash_pos - leading_backslash_pos - 1);
 	return target_file_name;
 }
 
@@ -144,7 +140,7 @@ void RequestLine::_construct()
 	request_line_tokens = tokenise_str(this->_start_line);
 	if (request_line_tokens.size() != 3)
 	{
-		throw std::runtime_error("Invalid request start line");
+		throw HTTPException(400, "Invalid request start line");
 	}
 
 	request_line_tokens = tokenise_str(this->_start_line);
@@ -152,6 +148,21 @@ void RequestLine::_construct()
 	this->_target = trim_chars(request_line_tokens[1], WHITESPACE_CHARACTERS);
 	this->_protocol = trim_chars(request_line_tokens[2], WHITESPACE_CHARACTERS);
 	this->_validate_method();
+	this->_validate_target();
+}
+
+void RequestLine::_validate_target()
+{
+	std::string decoded_target;
+	int			extension_count;
+
+	decoded_target = url_decode(this->_target);
+	decoded_target = decoded_target.substr(0, decoded_target.find('?'));
+	extension_count = std::count(decoded_target.begin(), decoded_target.end(), '.');
+	if (extension_count > 1)
+	{
+		throw HTTPException(404, "Invalid url");
+	}
 }
 
 void RequestLine::_validate_method()
@@ -174,7 +185,7 @@ void RequestLine::_validate_method()
 			return;
 		}
 	}
-	throw std::runtime_error("Invalid method");
+	throw HTTPException(400, "Invalid method");
 }
 
 }

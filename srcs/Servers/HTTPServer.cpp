@@ -4,7 +4,7 @@ namespace ft
 {
 
 HTTPServer::HTTPServer(unsigned int port, int backlog, unsigned int max_clients, unsigned int buffer_size, std::vector<ServerConfig> server_configs) 
-: Server(AF_INET, SOCK_STREAM, 0, port, INADDR_ANY, backlog), _fd_to_client_map(), _server_configs(server_configs), _client_read_fds(), _client_write_fds(), _port(port), _max_clients(max_clients), _buffer_size(buffer_size){}
+: Server(AF_INET, SOCK_STREAM, 0, port, INADDR_ANY, backlog), _fd_to_client_map(), _fd_to_last_activity_map(), _server_configs(server_configs), _client_read_fds(), _client_write_fds(), _port(port), _max_clients(max_clients), _buffer_size(buffer_size){}
 
 HTTPServer::~HTTPServer()
 {
@@ -37,6 +37,7 @@ void HTTPServer::accept_connection()
 	try
 	{
 		this->_fd_to_client_map.insert(std::make_pair(accept_fd, new Client(accept_fd, this->_buffer_size)));
+		this->_fd_to_last_activity_map.insert(std::make_pair(accept_fd, time(NULL)));
 	}
 	catch(const std::exception& e)
 	{
@@ -80,13 +81,14 @@ void HTTPServer::handle_request(const int &fd)
 		{
 			current_client.handle_request_body();
 		}
+
+		this->_fd_to_last_activity_map.at(fd) = time(NULL);
 		
 		if (current_client.get_client_state() == Client::VALIDATING_REQUEST
 		|| current_client.get_client_state() == Client::PROCESSING_EXCEPTION)
 		{
 			insert_into_client_write_fds(fd);
 			remove_from_client_read_fd(fd);
-			// this->_assign_config_to_client(fd);
 		}
 	}
 	catch (const std::out_of_range &e)
@@ -102,6 +104,7 @@ void HTTPServer::handle_response(const int &fd)
 		Client &client = *(this->_fd_to_client_map.at(fd));
 
 		client.handle_response();
+		this->_fd_to_last_activity_map.at(fd) = time(NULL);
 		if (this->_fd_to_client_map.at(fd)->get_client_state() == Client::FINISHED_PROCESSING)
 		{
 			close(fd);
@@ -113,6 +116,36 @@ void HTTPServer::handle_response(const int &fd)
 	{
 		this->remove_fd(fd);
 	}
+}
+
+void	HTTPServer::timeout_idle_connections(double timeout)
+{
+	std::list<int>	timed_out_connections;
+
+	for (std::map<int, time_t>::iterator it = this->_fd_to_last_activity_map.begin(); it != this->_fd_to_last_activity_map.end(); it++)
+	{
+		const int	&fd = it->first;
+		time_t		&last_activity = it->second;
+
+		std::cerr << "time diff: " << std::difftime(time(NULL), last_activity) << std::endl;
+		if (std::difftime(time(NULL), last_activity) > timeout)
+		{
+			timed_out_connections.push_back(fd);
+		}
+	}
+
+	for (std::list<int>::iterator it = timed_out_connections.begin(); it != timed_out_connections.end(); it++)
+	{
+		int	&fd = *it;
+		
+		close(fd);
+		this->remove_fd(fd);
+	}
+}
+
+bool	HTTPServer::have_clients() const
+{
+	return !this->_fd_to_client_map.empty();
 }
 
 int HTTPServer::get_listen_socket_fd() const
@@ -161,12 +194,18 @@ void HTTPServer::remove_fd(int fd)
 
 	try
 	{
+		std::cerr << "finding client" << std::endl;
 		client = this->_fd_to_client_map.at(fd);
 		delete client;
 	}
 	catch (const std::out_of_range &e){}
+	std::cerr << "erasing fd client" << std::endl;
 	this->_fd_to_client_map.erase(fd);
+	std::cerr << "erasing fd last activity" << std::endl;
+	this->_fd_to_last_activity_map.erase(fd);
+	std::cerr << "removing from read fd" << std::endl;
 	remove_from_client_read_fd(fd);
+	std::cerr << "removing from write fd" << std::endl;
 	remove_from_client_write_fd(fd);
 }
 

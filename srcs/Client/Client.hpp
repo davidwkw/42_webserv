@@ -2,6 +2,7 @@
 
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <ctime>
 #include <string>
 #include <memory>
 #include <sstream>
@@ -87,7 +88,7 @@ class Client
 		void								_handle_method();
 		void								_handle_get(const std::string &path);
 		void								_handle_post(const std::string &path);
-		void								_handle_delete(std::string file_path);
+		void								_handle_delete(const std::string &file_path);
 		std::string							_generate_dir_content_list_html(const std::string &dir);
 		void								_handle_exception();
 		void								_handle_autoindex(const std::string &dir_path, std::stringstream &stream);
