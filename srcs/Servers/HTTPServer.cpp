@@ -8,19 +8,7 @@ HTTPServer::HTTPServer(unsigned int port, int backlog, unsigned int max_clients,
 
 HTTPServer::~HTTPServer()
 {
-	std::for_each(this->_client_read_fds.begin(), this->_client_read_fds.end(), close_fd_helper);
-	std::for_each(this->_client_write_fds.begin(), this->_client_write_fds.end(), close_fd_helper);
-	this->_client_read_fds.clear();
-	this->_client_write_fds.clear();
-
-	for (std::map<int, Client*>::iterator it = this->_fd_to_client_map.begin(); it != this->_fd_to_client_map.end(); it++)
-	{
-		Client *current_client_ptr = it->second;
-
-		delete current_client_ptr;
-		current_client_ptr = NULL;
-	}
-	this->_fd_to_client_map.clear();
+	this->clear();
 }
 
 void HTTPServer::accept_connection()
@@ -127,7 +115,6 @@ void	HTTPServer::timeout_idle_connections(double timeout)
 		const int	&fd = it->first;
 		time_t		&last_activity = it->second;
 
-		std::cerr << "time diff: " << std::difftime(time(NULL), last_activity) << std::endl;
 		if (std::difftime(time(NULL), last_activity) > timeout)
 		{
 			timed_out_connections.push_back(fd);
@@ -141,6 +128,23 @@ void	HTTPServer::timeout_idle_connections(double timeout)
 		close(fd);
 		this->remove_fd(fd);
 	}
+}
+
+void	HTTPServer::clear()
+{
+	std::for_each(this->_client_read_fds.begin(), this->_client_read_fds.end(), close_fd_helper);
+	std::for_each(this->_client_write_fds.begin(), this->_client_write_fds.end(), close_fd_helper);
+	this->_client_read_fds.clear();
+	this->_client_write_fds.clear();
+
+	for (std::map<int, Client*>::iterator it = this->_fd_to_client_map.begin(); it != this->_fd_to_client_map.end(); it++)
+	{
+		Client *current_client_ptr = it->second;
+
+		delete current_client_ptr;
+		current_client_ptr = NULL;
+	}
+	this->_fd_to_client_map.clear();
 }
 
 bool	HTTPServer::have_clients() const
@@ -194,18 +198,13 @@ void HTTPServer::remove_fd(int fd)
 
 	try
 	{
-		std::cerr << "finding client" << std::endl;
 		client = this->_fd_to_client_map.at(fd);
 		delete client;
 	}
 	catch (const std::out_of_range &e){}
-	std::cerr << "erasing fd client" << std::endl;
 	this->_fd_to_client_map.erase(fd);
-	std::cerr << "erasing fd last activity" << std::endl;
 	this->_fd_to_last_activity_map.erase(fd);
-	std::cerr << "removing from read fd" << std::endl;
 	remove_from_client_read_fd(fd);
-	std::cerr << "removing from write fd" << std::endl;
 	remove_from_client_write_fd(fd);
 }
 

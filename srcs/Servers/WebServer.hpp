@@ -40,6 +40,7 @@ class WebServer
 		void	_accept_incoming_connections();
 		void	_perform_socket_io();
 		bool	_have_clients();
+		void	_eject_all_clients();
 
 };
 

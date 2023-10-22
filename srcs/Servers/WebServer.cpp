@@ -53,7 +53,7 @@ void WebServer::run()
         activity = select(max_fd + 1, &this->_read_fds , &this->_write_fds , NULL , this->_have_clients() ? &timeout : NULL);
         if ((activity < 0) && (errno != EINTR))
         {  
-            throw std::runtime_error("Select error");
+            this->_eject_all_clients(); 
         }
         this->_accept_incoming_connections();
         this->_perform_socket_io();
@@ -214,7 +214,6 @@ void WebServer::_perform_socket_io()
             }
         }
 
-        std::cerr << "before timing out connections" << std::endl;
         current_server.timeout_idle_connections(REQUEST_TIMEOUT);
     }
 }
@@ -236,6 +235,16 @@ bool WebServer::_have_clients()
     }
 
     return result;
+}
+
+void WebServer::_eject_all_clients()
+{
+    for (std::map<unsigned int, HTTPServer *>::iterator it = this->_port_http_server_map.begin(); it != this->_port_http_server_map.end(); it++)
+    {
+        HTTPServer  &current_server = *(it->second);
+
+        current_server.clear();
+    }
 }
 
 }

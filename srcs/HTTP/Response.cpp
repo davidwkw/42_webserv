@@ -123,10 +123,7 @@ void Response::set_body_stream(std::auto_ptr<std::istream> body_stream)
 
 void Response::set_header(const std::string &key, const std::string &value)
 {
-	std::cerr << "inside setting header" << std::endl;
-	std::cerr << "key is: " << key << " value is: " << value << std::endl;;
 	this->_headers[key] = value;
-	std::cerr << "after setting header" << std::endl;
 }
 
 void Response::append_headers(const std::map<std::string, std::string> &header_map)

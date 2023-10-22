@@ -16,8 +16,6 @@
 
 namespace ft {
 
-class Client;
-
 class HTTPServer : public Server 
 {
 	public:
@@ -30,6 +28,7 @@ class HTTPServer : public Server
 		void			timeout_idle_connections(double timeout);
 
 		bool			have_clients() const;
+		void			clear();
 
 		std::list<int>	get_client_write_fds() const;
 		std::list<int>	get_client_read_fds() const;

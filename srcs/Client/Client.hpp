@@ -14,12 +14,10 @@
 #include "../HTTP/Request.hpp"
 #include "../HTTP/Response.hpp"
 #include "../CGI/CGI.hpp"
+#include "../Configurations/CommonServerConfig.hpp"
 
 namespace ft
 {
-
-class CGI;
-class CommonServerConfig;
 
 class Client
 {
