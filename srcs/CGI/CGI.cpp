@@ -164,7 +164,6 @@ void CGI::read_cgi_stream(const size_t &read_amount)
 	ssize_t	bytes_read = 0;
 
 	buffer = new char[read_amount];
-	std::memset(buffer, 0, read_amount);
 	bytes_read = read(this->_read_pipefd, buffer, read_amount);
 	if (bytes_read == -1)
 	{
@@ -178,7 +177,7 @@ void CGI::read_cgi_stream(const size_t &read_amount)
 	}
 	else
 	{
-		this->_output_stream << buffer;
+		this->_output_stream.write(buffer, bytes_read);
 	}
 	delete[] buffer;
 }

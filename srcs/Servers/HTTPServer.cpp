@@ -15,7 +15,7 @@ HTTPServer::HTTPServer(unsigned int port, int backlog, unsigned int max_clients,
 		throw std::runtime_error(ret_str_perror("Failed to set reuse addr socket option"));
 	}
 
-	int sock_buffer_size = static_cast<int>(buffer_size);
+	int sock_buffer_size = SOCKET_RECV_BUFFER_SIZE;
 
 	if (setsockopt(this->_socket->get_sock(), SOL_SOCKET, SO_RCVBUF, &sock_buffer_size, sizeof(sock_buffer_size)) != 0)
 	{

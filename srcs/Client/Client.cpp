@@ -185,13 +185,13 @@ std::size_t Client::read_to_buffer()
 	std::size_t	bytes_read;
 
 	buffer = new char[this->_buffer_size];
-	std::memset(buffer, 0, this->_buffer_size);
+	std::cerr << "recv buffer size: " << this->_buffer_size << std::endl;
 	if ((bytes_read = recv(this->_fd, buffer, this->_buffer_size, MSG_NOSIGNAL)) <= 0)
 	{
 		std::cerr << "failed recv" << std::endl;
 		return bytes_read;
 	}
-	this->_buffer_stream << std::string(buffer);
+	this->_buffer_stream.write(buffer, bytes_read);
 	delete[] buffer;
 	return bytes_read;
 }
@@ -431,10 +431,21 @@ void Client::handle_response()
 
 void Client::process_header()
 {
-	this->_match_location();
-	this->_configure_common_config();
-	this->_is_method_allowed();
-	this->_dir_path = this->_common_server_config->root() + (this->_endpoint.empty() ? "/" : this->_endpoint);
+	// try
+	// {
+		this->_match_location();
+		this->_configure_common_config();
+		this->_is_method_allowed();
+		this->_dir_path = this->_common_server_config->root() + (this->_endpoint.empty() ? "/" : this->_endpoint);
+	// }
+	// catch (const HTTPException &e)
+	// {
+	// 	for (std::vector<std::string>::iterator it = files.begin(); it != files.end(); it++)
+	// 	{
+	// 		remove(it->c_str());
+	// 	}
+	// 	throw e;
+	// }
 }
 
 std::size_t Client::_get_body_size()

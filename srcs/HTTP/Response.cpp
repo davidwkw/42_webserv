@@ -162,7 +162,6 @@ std::string Response::read_response(std::size_t buffer_size)
 	std::string	result;
 
 	buffer = new char[buffer_size];
-	std::memset(buffer, 0, buffer_size);
 	if (*(this->_message_format))
 	{
 		if (this->_message_format->str().size() < buffer_size)
@@ -175,8 +174,9 @@ std::string Response::read_response(std::size_t buffer_size)
 	if (!(*(this->_message_format)) && this->_body_stream.get() != NULL)
 	{
 		this->_body_stream->read(buffer + buffer_offset, remaining_char_count);
+		remaining_char_count -= this->_body_stream->gcount();
 	}
-	result = std::string(buffer);
+	result = std::string(buffer, buffer_size - remaining_char_count);
 	delete[] buffer;
 	return result;
 }
