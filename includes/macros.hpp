@@ -10,7 +10,7 @@
 #define ERROR_PAGE_DIR "public/error_pages/"
 #define DEFAULT_ERROR_PAGE_DIR "default/"
 #define CRLF "\r\n"
-#define BUFFER_SIZE 8192
+#define BUFFER_SIZE 4096
 #define TIMEOUT 1000*5
 #define BACKLOG 10
 #define MAX_CLIENTS 10

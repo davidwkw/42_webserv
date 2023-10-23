@@ -26,7 +26,7 @@ all : $(NAME)
 
 $(NAME)	:	$(OBJS)
 	@echo "Creating $(NAME)"
-	$(CXX) $(OBJS) -o $@ $(LDFLAGS)
+	$(CXX) -fsanitize=address $(OBJS) -o $@ $(LDFLAGS)
 
 $(BUILD_DIR)/%.o: %.cpp
 	@mkdir -p $(dir $@)

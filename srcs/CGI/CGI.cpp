@@ -141,11 +141,11 @@ void CGI::execute()
 		dup2(cgi_writepipe[1], STDOUT_FILENO);
 		close(cgi_writepipe[1]);
 
-		std::auto_ptr<char *> meta_envp;
+		char ** meta_envp;
 		meta_envp = this->_prepare_meta_variables();
-		std::auto_ptr<char *> args;
+		char ** args;
 		args = this->_prepare_cgi_arg();
-		execve(this->_binary.c_str(), args.get(), meta_envp.get());
+		execve(this->_binary.c_str(), args, meta_envp);
 		std::exit(1);
 	}
 	else
@@ -160,11 +160,12 @@ void CGI::execute()
 
 void CGI::read_cgi_stream(const size_t &read_amount)
 {
-	std::auto_ptr<char> buffer(new char[read_amount]);
-	ssize_t				bytes_read = 0;
+	char	*buffer;
+	ssize_t	bytes_read = 0;
 
-	std::memset(buffer.get(), 0, read_amount);
-	bytes_read = read(this->_read_pipefd, buffer.get(), read_amount);
+	buffer = new char[read_amount];
+	std::memset(buffer, 0, read_amount);
+	bytes_read = read(this->_read_pipefd, buffer, read_amount);
 	if (bytes_read == -1)
 	{
 		throw HTTPException(500, "Read failed");
@@ -177,8 +178,9 @@ void CGI::read_cgi_stream(const size_t &read_amount)
 	}
 	else
 	{
-		this->_output_stream << buffer.get();
+		this->_output_stream << buffer;
 	}
+	delete[] buffer;
 }
 
 void	CGI::write_to_cgi(const std::string &str)
@@ -304,33 +306,35 @@ void CGI::_parse_headers()
 	getline_CRLF(this->_output_stream, line);
 }
 
-std::auto_ptr<char *> CGI::_prepare_meta_variables()
+char **CGI::_prepare_meta_variables()
 {
-	std::auto_ptr<char *>	env_arr(new char*[this->_envp.size() + 1]);
-	std::size_t				index = 0;
+	char 		**env_arr;
+	std::size_t	index = 0;
 
+	env_arr = new char*[this->_envp.size() + 1];
 	for (std::set<std::string>::iterator it = this->_envp.begin(); it != this->_envp.end(); it++)
 	{
-		env_arr.get()[index] = const_cast<char *>(it->c_str());
+		env_arr[index] = const_cast<char *>(it->c_str());
 		index++;
 	}
-	env_arr.get()[index] = NULL;
+	env_arr[index] = NULL;
 	return env_arr;
 }
 
-std::auto_ptr<char *> CGI::_prepare_cgi_arg()
+char **CGI::_prepare_cgi_arg()
 {
-	std::auto_ptr<char *> args(new char*[1 + this->_args.size() + 1]);
+	char **		args;
 	std::size_t	index = 0;
 
-	args.get()[index] = const_cast<char *>(this->_binary.c_str());
+	args = new char*[1 + this->_args.size() + 1];
+	args[index] = const_cast<char *>(this->_binary.c_str());
 	index++;
 	for (std::vector<std::string>::iterator it = this->_args.begin(); it != this->_args.end(); it++)
 	{
-		args.get()[index] = const_cast<char *>(it->c_str());
+		args[index] = const_cast<char *>(it->c_str());
 		index++;
 	}
-	args.get()[index] = NULL; 
+	args[index] = NULL; 
 	return args;
 }
 

@@ -156,11 +156,13 @@ void Response::construct_response_message_format() // TODO: refactor
 
 std::string Response::read_response(std::size_t buffer_size)
 {
-	std::auto_ptr<char> buffer(new char[buffer_size]);
-	std::size_t			remaining_char_count = buffer_size;
-	std::size_t			buffer_offset = 0;
+	char		*buffer;
+	std::size_t	remaining_char_count = buffer_size;
+	std::size_t	buffer_offset = 0;
+	std::string	result;
 
-	std::memset(buffer.get(), 0, buffer_size);
+	buffer = new char[buffer_size];
+	std::memset(buffer, 0, buffer_size);
 	if (*(this->_message_format))
 	{
 		if (this->_message_format->str().size() < buffer_size)
@@ -168,13 +170,15 @@ std::string Response::read_response(std::size_t buffer_size)
 			remaining_char_count -= this->_message_format->str().size();
 			buffer_offset += this->_message_format->str().size();
 		}
-		this->_message_format->read(buffer.get(), remaining_char_count);
+		this->_message_format->read(buffer, remaining_char_count);
 	}
 	if (!(*(this->_message_format)) && this->_body_stream.get() != NULL)
 	{
-		this->_body_stream->read(buffer.get() + buffer_offset, remaining_char_count);
+		this->_body_stream->read(buffer + buffer_offset, remaining_char_count);
 	}
-	return std::string(buffer.get());
+	result = std::string(buffer);
+	delete[] buffer;
+	return result;
 }
 
 void Response::unread_response(std::size_t unread_size)

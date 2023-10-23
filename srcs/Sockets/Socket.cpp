@@ -6,16 +6,10 @@ namespace ft
 
 Socket::Socket(int domain, int service, int protocol, unsigned int port, u_long interface)
 {
-	// define address structure
 	this->_address.sin_family = domain;
 	this->_address.sin_port = htons(port);
 	this->_address.sin_addr.s_addr = htonl(interface);
 	this->_sock_fd = socket(domain, service, protocol);
-	// if(setsockopt(this->_sock_fd, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(opt)) < 0 )  
-    // {  
-    //     perror("setsockopt");  
-    //     exit(EXIT_FAILURE);  
-    // }  
 	test_connection(_sock_fd);
 }
 

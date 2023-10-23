@@ -4,7 +4,35 @@ namespace ft
 {
 
 HTTPServer::HTTPServer(unsigned int port, int backlog, unsigned int max_clients, unsigned int buffer_size, std::vector<ServerConfig> server_configs) 
-: Server(AF_INET, SOCK_STREAM, 0, port, INADDR_ANY, backlog), _fd_to_client_map(), _fd_to_last_activity_map(), _server_configs(server_configs), _client_read_fds(), _client_write_fds(), _port(port), _max_clients(max_clients), _buffer_size(buffer_size){}
+: Server(AF_INET, SOCK_STREAM, 0, port, INADDR_ANY, backlog), _fd_to_client_map(), _fd_to_last_activity_map(), _server_configs(server_configs), _client_read_fds(), _client_write_fds(), _port(port), _max_clients(max_clients), _buffer_size(buffer_size)
+{
+	std::cerr << "constructing httpserver" << std::endl;
+
+	int enable_option = 1;
+
+	if (setsockopt(this->_socket->get_sock(), SOL_SOCKET, SO_REUSEADDR, &enable_option, sizeof(enable_option)) != 0)
+	{
+		throw std::runtime_error(ret_str_perror("Failed to set reuse addr socket option"));
+	}
+
+	int sock_buffer_size = static_cast<int>(buffer_size);
+
+	if (setsockopt(this->_socket->get_sock(), SOL_SOCKET, SO_RCVBUF, &sock_buffer_size, sizeof(sock_buffer_size)) != 0)
+	{
+		throw std::runtime_error(ret_str_perror("Failed to set receive buffer socket option"));
+	}
+
+	int optval;
+	socklen_t optlen = sizeof(optval);
+
+	getsockopt(this->_socket->get_sock(), SOL_SOCKET, SO_RCVBUF, &optval, &optlen);
+	std::cerr << "recv buff is: " << optval << std::endl;
+
+	if (setsockopt(this->_socket->get_sock(), SOL_SOCKET, SO_SNDBUF, &sock_buffer_size, sizeof(sock_buffer_size)) != 0)
+	{
+		throw std::runtime_error(ret_str_perror("Failed to set send buffer socket option"));
+	}
+}
 
 HTTPServer::~HTTPServer()
 {
@@ -24,6 +52,7 @@ void HTTPServer::accept_connection()
 	}
 	try
 	{
+		fcntl(accept_fd, F_SETFL, O_NONBLOCK);
 		this->_fd_to_client_map.insert(std::make_pair(accept_fd, new Client(accept_fd, this->_buffer_size)));
 		this->_fd_to_last_activity_map.insert(std::make_pair(accept_fd, time(NULL)));
 	}

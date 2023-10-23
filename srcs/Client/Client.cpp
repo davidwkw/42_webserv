@@ -181,16 +181,18 @@ void Client::set_client_state(const ClientState &state)
 
 std::size_t Client::read_to_buffer()
 {
-	std::auto_ptr<char>	buffer(new char[this->_buffer_size]);
-	std::size_t			bytes_read;
+	char		*buffer;
+	std::size_t	bytes_read;
 
-	std::memset(buffer.get(), 0, this->_buffer_size);
-	if ((bytes_read = recv(this->_fd, buffer.get(), this->_buffer_size, MSG_NOSIGNAL)) <= 0)
+	buffer = new char[this->_buffer_size];
+	std::memset(buffer, 0, this->_buffer_size);
+	if ((bytes_read = recv(this->_fd, buffer, this->_buffer_size, MSG_NOSIGNAL)) <= 0)
 	{
 		std::cerr << "failed recv" << std::endl;
 		return bytes_read;
 	}
-	this->_buffer_stream << std::string(buffer.get());
+	this->_buffer_stream << std::string(buffer);
+	delete[] buffer;
 	return bytes_read;
 }
 
@@ -333,19 +335,21 @@ void Client::handle_response()
 
 			if (FD_ISSET(write_fd, &write_set))
 			{
-				std::auto_ptr<char> buffer(new char[CGI_READ_BUFFER_SIZE]);
+				char	*buffer;
 
-				std::memset(buffer.get(), 0, CGI_READ_BUFFER_SIZE);
+				buffer = new char[CGI_READ_BUFFER_SIZE];
+				std::memset(buffer, 0, CGI_READ_BUFFER_SIZE);
 				if (&this->_request.get_body() != NULL
-					&& this->_request.get_raw_body_stream().read(buffer.get(), CGI_READ_BUFFER_SIZE))
+					&& this->_request.get_raw_body_stream().read(buffer, CGI_READ_BUFFER_SIZE))
 				{
-					this->_cgi->write_to_cgi(buffer.get());
+					this->_cgi->write_to_cgi(buffer);
 					this->_cgi->update_time_since_last_activity(time(NULL));
 				}
 				else
 				{
 					this->_cgi->close_write_fd();
 				}
+				delete[] buffer;
 			}
 
 			if (FD_ISSET(read_fd, &read_set))

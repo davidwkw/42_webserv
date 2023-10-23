@@ -54,7 +54,8 @@
 		"chrono": "cpp",
 		"condition_variable": "cpp",
 		"ratio": "cpp",
-		"shared_mutex": "cpp"
+		"shared_mutex": "cpp",
+		"csignal": "cpp"
 	},
 	"C_Cpp.default.configurationProvider": "ms-vscode.makefile-tools",
 	"C_Cpp.errorSquiggles": "enabled"

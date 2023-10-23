@@ -78,8 +78,8 @@ class CGI
 
 		void					_validate_header_field(const std::pair<std::string, std::string> &header_pair);
 		void					_parse_headers();
-		std::auto_ptr<char *>	_prepare_meta_variables();
-		std::auto_ptr<char *>	_prepare_cgi_arg();
+		char **					_prepare_meta_variables();
+		char **					_prepare_cgi_arg();
 
 };
 
