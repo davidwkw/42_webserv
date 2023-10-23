@@ -866,7 +866,7 @@ void Client::_handle_post(const std::string &dir_path)
 		{
 			for (std::map<int, RequestMultipart>::iterator it = index_multipart.begin(); it != index_multipart.end(); it++)
 			{
-				RequestMultipart	&file_part = it->second; // for readability;
+				RequestMultipart	&file_part = it->second;
 				std::string			filename;
 				std::size_t			forward_slash_pos;
 
