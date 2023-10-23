@@ -428,13 +428,9 @@ void Client::process_header()
 {
 	try
 	{
-		// std::string endpoint;
-
 		this->_match_location();
 		this->_configure_common_config();
 		this->_is_method_allowed();
-		// endpoint = (this->_endpoint.empty() ? "/" : this->_endpoint); 
-		// this->_dir_path = this->_common_server_config->root() + endpoint + this->_request.get_target_file(); // public/test/blank.html, //
 		this->_construct_directory_path();
 	}
 	catch (const HTTPException &e)
