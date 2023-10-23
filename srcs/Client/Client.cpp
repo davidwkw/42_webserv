@@ -251,10 +251,8 @@ void Client::handle_request_body()
 		
 		if (!this->_has_received_complete_body())
 		{
-			std::cerr << "not yet received full body" << std::endl;
 			return;	
 		}
-		std::cerr << "received full body" << std::endl;
 		this->_create_request_body();
 		this->_buffer_stream.str("");
 		this->_state = PROCESSING_RESPONSE;
@@ -336,7 +334,6 @@ void Client::handle_response()
 				char	*buffer;
 
 				buffer = new char[CGI_READ_BUFFER_SIZE];
-				std::memset(buffer, 0, CGI_READ_BUFFER_SIZE);
 				if (&this->_request.get_body() != NULL
 					&& this->_request.get_raw_body_stream().read(buffer, CGI_READ_BUFFER_SIZE))
 				{
@@ -429,21 +426,23 @@ void Client::handle_response()
 
 void Client::process_header()
 {
-	// try
-	// {
+	try
+	{
+		// std::string endpoint;
+
 		this->_match_location();
 		this->_configure_common_config();
 		this->_is_method_allowed();
-		this->_dir_path = this->_common_server_config->root() + (this->_endpoint.empty() ? "/" : this->_endpoint);
-	// }
-	// catch (const HTTPException &e)
-	// {
-	// 	for (std::vector<std::string>::iterator it = files.begin(); it != files.end(); it++)
-	// 	{
-	// 		remove(it->c_str());
-	// 	}
-	// 	throw e;
-	// }
+		// endpoint = (this->_endpoint.empty() ? "/" : this->_endpoint); 
+		// this->_dir_path = this->_common_server_config->root() + endpoint + this->_request.get_target_file(); // public/test/blank.html, //
+		this->_construct_directory_path();
+	}
+	catch (const HTTPException &e)
+	{
+		this->_response.set_status_code(e.get_status_code());
+		this->_buffer_stream.str("");
+		this->_state = PROCESSING_EXCEPTION;
+	}
 }
 
 std::size_t Client::_get_body_size()
@@ -748,11 +747,15 @@ std::string Client::_generate_dir_content_list_html(const std::string &dir_path)
 	end_path = end_path.erase(end_path.find(root_str), root_str.length());
 	while ((entry = readdir(folder)) != NULL)
 	{
-		if (entry->d_type == DT_REG)
+		if (entry->d_type == DT_REG || entry->d_type == DT_DIR)
 		{
+			if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+			{
+				continue;
+			}
 			std::string	link;
 
-			link = this->_request.get_header("Host") + end_path + std::string(entry->d_name);
+			link = this->_request.get_header("Host") + end_path + std::string(entry->d_name) + (entry->d_type == DT_DIR ? "/" : "");
 			oss << "<li>";
 			oss << "<a href=\"http://" << link.c_str() << "\">" << entry->d_name << "</a>\n";
 			oss << "</li>";
@@ -820,7 +823,7 @@ void Client::_handle_get(const std::string &file_path)
 		std::stringstream *temp_stream = new std::stringstream;
 
 		this->_handle_autoindex(file_path, *temp_stream);
-		this->_response.set_header("Content-Type", "text/html"); // had to hardcode..
+		this->_response.set_header("Content-Type", "text/html");
 		this->_response.set_body_stream(temp_stream);
 	}
 	else
@@ -1133,6 +1136,21 @@ void Client::_initialize_cgi()
 		}
 		this->_cgi->add_envp(it->first, "HTTP_" + it->second);
 	}
+}
+
+void Client::_construct_directory_path()
+{
+	std::string target_path;
+	std::string	endpoint;
+	std::size_t	target_file_pos;
+
+	target_path = url_decode(this->_request.get_target());
+	target_path = target_path.substr(0, target_path.find('?'));
+	target_file_pos = (this->_request.get_target_file().empty() ? std::string::npos : target_path.find(this->_request.get_target_file()));
+	target_path = target_path.substr(0, target_file_pos);
+	endpoint = (this->_endpoint.empty() ? "/" : this->_endpoint); 
+	target_path.erase(target_path.find(endpoint), endpoint.length());
+	this->_dir_path = this->_common_server_config->root() + endpoint + target_path;
 }
 
 }

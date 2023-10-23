@@ -7,6 +7,7 @@
 #include <memory>
 #include <sstream>
 #include <map>
+#include <cstring>
 
 #include "../../includes/macros.hpp"
 #include "../Configurations/webserv-configurations.hpp"
@@ -107,6 +108,7 @@ class Client
 		void 								_parse_chunked_request_body(std::stringstream &stream);
 		std::string							_identify_content_type();
 		void								_check_request_body_headers();
+		void								_construct_directory_path();
 
 };
 
