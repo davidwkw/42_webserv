@@ -4,35 +4,7 @@ namespace ft
 {
 
 HTTPServer::HTTPServer(unsigned int port, int backlog, unsigned int max_clients, unsigned int buffer_size, std::vector<ServerConfig> server_configs) 
-: Server(AF_INET, SOCK_STREAM, 0, port, INADDR_ANY, backlog), _fd_to_client_map(), _fd_to_last_activity_map(), _server_configs(server_configs), _client_read_fds(), _client_write_fds(), _port(port), _max_clients(max_clients), _buffer_size(buffer_size)
-{
-	std::cerr << "constructing httpserver" << std::endl;
-
-	int enable_option = 1;
-
-	if (setsockopt(this->_socket->get_sock(), SOL_SOCKET, SO_REUSEADDR, &enable_option, sizeof(enable_option)) != 0)
-	{
-		throw std::runtime_error(ret_str_perror("Failed to set reuse addr socket option"));
-	}
-
-	int sock_buffer_size = SOCKET_RECV_BUFFER_SIZE;
-
-	if (setsockopt(this->_socket->get_sock(), SOL_SOCKET, SO_RCVBUF, &sock_buffer_size, sizeof(sock_buffer_size)) != 0)
-	{
-		throw std::runtime_error(ret_str_perror("Failed to set receive buffer socket option"));
-	}
-
-	int optval;
-	socklen_t optlen = sizeof(optval);
-
-	getsockopt(this->_socket->get_sock(), SOL_SOCKET, SO_RCVBUF, &optval, &optlen);
-	std::cerr << "recv buff is: " << optval << std::endl;
-
-	if (setsockopt(this->_socket->get_sock(), SOL_SOCKET, SO_SNDBUF, &sock_buffer_size, sizeof(sock_buffer_size)) != 0)
-	{
-		throw std::runtime_error(ret_str_perror("Failed to set send buffer socket option"));
-	}
-}
+: Server(AF_INET, SOCK_STREAM, 0, port, INADDR_ANY, backlog, static_cast<int>(buffer_size)), _fd_to_client_map(), _fd_to_last_activity_map(), _server_configs(server_configs), _client_read_fds(), _client_write_fds(), _port(port), _max_clients(max_clients), _buffer_size(buffer_size){}
 
 HTTPServer::~HTTPServer()
 {
@@ -97,14 +69,12 @@ void HTTPServer::handle_request(const int &fd)
 		
 		if (current_client.get_client_state() == Client::READING_REQUEST_BODY)
 		{
-			std::cerr << "handling request body" << std::endl;
 			current_client.handle_request_body();
 		}
 		
 		if (current_client.get_client_state() == Client::PROCESSING_RESPONSE
 		|| current_client.get_client_state() == Client::PROCESSING_EXCEPTION)
 		{
-			std::cerr << "finished processing" << std::endl;
 			insert_into_client_write_fds(fd);
 			remove_from_client_read_fd(fd);
 		}

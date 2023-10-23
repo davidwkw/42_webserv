@@ -52,11 +52,6 @@ void WebServer::run()
         this->_append_read_sockets_to_readfd(max_fd);
         this->_append_write_sockets_to_writefd(max_fd);
         activity = select(max_fd + 1, &this->_read_fds , &this->_write_fds , NULL , this->_have_clients() ? &timeout : NULL);
-        std::cerr << "activity: " << activity << std::endl;
-        if (errno != 0)
-        {
-            std::cerr << "error is : " << std::strerror(errno) << std::endl; 
-        }
         if ((activity < 0) && (errno != EINTR))
         {  
             this->_eject_all_clients();
@@ -101,13 +96,8 @@ void WebServer::_initialise_socket_fd()
         catch(const std::out_of_range& e)
         {
             this->_port_http_server_map.insert(std::make_pair(current_port, new HTTPServer(current_port, BACKLOG, MAX_CLIENTS, BUFFER_SIZE, server_configs)));
+            std::cerr << "HTTPServer launched with with port: " << current_port << std::endl;
         }
-        
-    }
-
-    for(std::map<unsigned int, HTTPServer *>::iterator it = _port_http_server_map.begin(); it != _port_http_server_map.end(); it++)
-    {
-        std::cerr << "HTTPServer with port: " << it->first << std::endl;
     }
 }
 
@@ -141,7 +131,6 @@ void WebServer::_append_read_sockets_to_readfd(int &max_fd)
         std::list<int>	client_read_fd_list;
 
 		client_read_fd_list = current_server.get_client_read_fds();
-        std::cerr << "client_readfds size: " << client_read_fd_list.size() << std::endl; 
         for (std::list<int>::iterator it2 = client_read_fd_list.begin(); it2 != client_read_fd_list.end(); it2++)
         {
             int &current_fd = *it2;

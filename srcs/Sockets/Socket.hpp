@@ -6,6 +6,8 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include <stdexcept>
+
+#include "../../includes/macros.hpp"
 #include "../utils/utils.hpp"
 
 namespace ft
@@ -14,7 +16,7 @@ namespace ft
 	class Socket
 	{
 		public:
-			Socket(int domain, int service, int protocol, unsigned int port, u_long interface);
+			Socket(int domain, int service, int protocol, unsigned int port, u_long interface, int buffer_size);
 			virtual ~Socket();
 
 			void		test_connection(int);
@@ -23,8 +25,8 @@ namespace ft
 			struct sockaddr_in	get_address() const;
 			int					get_sock() const;
 		private:
-			int		_sock_fd;
-			struct sockaddr_in _address;
+			int					_sock_fd;
+			struct sockaddr_in	_address;
 	};
 
 }

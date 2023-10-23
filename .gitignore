@@ -8,3 +8,6 @@ webserver_log.txt
 *.d
 webserv
 /objs
+*.jpeg
+*.jpg
+*.png

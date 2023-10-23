@@ -10,7 +10,7 @@ namespace ft
 class Server
 {
 	public:
-		Server(int domain, int service, int protocol , unsigned int port, u_long interface, int backlog);
+		Server(int domain, int service, int protocol , unsigned int port, u_long interface, int backlog, int buffer_size);
 		virtual ~Server();
 	
 		ListeningSocket *get_socket() const;

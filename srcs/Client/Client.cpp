@@ -185,10 +185,8 @@ std::size_t Client::read_to_buffer()
 	std::size_t	bytes_read;
 
 	buffer = new char[this->_buffer_size];
-	std::cerr << "recv buffer size: " << this->_buffer_size << std::endl;
 	if ((bytes_read = recv(this->_fd, buffer, this->_buffer_size, MSG_NOSIGNAL)) <= 0)
 	{
-		std::cerr << "failed recv" << std::endl;
 		return bytes_read;
 	}
 	this->_buffer_stream.write(buffer, bytes_read);

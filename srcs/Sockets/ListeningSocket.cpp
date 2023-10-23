@@ -3,7 +3,7 @@
 namespace ft
 {
 
-ListeningSocket::ListeningSocket(int domain, int service, int protocol, unsigned int port, u_long interface, int backlog) : BindingSocket(domain, service, protocol, port, interface)
+ListeningSocket::ListeningSocket(int domain, int service, int protocol, unsigned int port, u_long interface, int backlog, int buffer_size) : BindingSocket(domain, service, protocol, port, interface, buffer_size)
 {
 	int status;
 

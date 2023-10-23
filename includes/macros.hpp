@@ -11,7 +11,6 @@
 #define DEFAULT_ERROR_PAGE_DIR "default/"
 #define CRLF "\r\n"
 #define BUFFER_SIZE 65536
-#define SOCKET_RECV_BUFFER_SIZE 1024
 #define TIMEOUT 1000*5
 #define BACKLOG 10
 #define MAX_CLIENTS 10

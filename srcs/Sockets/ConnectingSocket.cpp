@@ -3,7 +3,7 @@
 namespace ft
 {
 
-ConnectingSocket::ConnectingSocket(int domain, int service, int protocol, unsigned int port, u_long interface) : Socket(domain, service, protocol, port, interface)
+ConnectingSocket::ConnectingSocket(int domain, int service, int protocol, unsigned int port, u_long interface, int buffer_size) : Socket(domain, service, protocol, port, interface, buffer_size)
 {
 	int status;
 
