@@ -9,10 +9,11 @@ This webserver programme is compliant to HTTP/1.1 standards as well as for the m
 Readme for 42 programme's webserver project
 
 Notes for .conf files:
-1. Comments are supported
-2. Location needs to be formatted between forward slashes, i.e. /endpoint/
+1. Comments are supported.
+2. Location needs to be formatted between forward slashes, i.e. /endpoint/.
 3. root directive should be a relative path to webserv binary, i.e. public
 4. server->location directive inheritance is also supported. location directives overwrite server directives.
+5. Defaultable directives are defaulted in their respective contexts unless overwritten.
 
 Footnotes:
 1. Select used for this implementation but not ideal due to number of fd limitation. A lot more fds are used than expected.
