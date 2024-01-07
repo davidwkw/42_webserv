@@ -474,7 +474,6 @@ bool Client::_has_received_complete_body()
 	}
 	else if (!this->_request.get_header("Content-Length").empty())
 	{
-		std::cerr << "current length: " <<  this->_get_body_size() << std::endl;
 		std::string		content_length;
 		unsigned long	content_length_value;
 
@@ -733,7 +732,7 @@ std::string Client::_generate_dir_content_list_html(const std::string &dir_path)
     folder = opendir(dir_path.c_str());
     if (folder == NULL)
 	{
-        throw HTTPException(500, "Couldn't open dir " + dir_path);
+        throw HTTPException(404, "Couldn't open dir " + dir_path);
 	}
 	std::string root_str;
 	std::string	end_path;
